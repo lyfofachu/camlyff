@@ -1,0 +1,337 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Camlyff Dashboard</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f3; color: #1a1a18; }
+  .app { display: flex; height: 100vh; min-height: 600px; }
+  .sidebar { width: 200px; min-width: 200px; background: #ffffff; border-right: 0.5px solid rgba(0,0,0,0.12); display: flex; flex-direction: column; padding: 16px 0; }
+  .logo { padding: 8px 16px 20px; }
+  .logo-name { font-size: 17px; font-weight: 500; color: #1a1a18; letter-spacing: -0.3px; }
+  .logo-handle { font-size: 12px; color: #888780; }
+  .nav-item { display: flex; align-items: center; gap: 10px; padding: 9px 16px; font-size: 13px; color: #888780; cursor: pointer; border-left: 2px solid transparent; transition: all 0.15s; }
+  .nav-item:hover { background: #f1efe8; color: #1a1a18; }
+  .nav-item.active { color: #1a1a18; font-weight: 500; border-left: 2px solid #1D9E75; background: #f1efe8; }
+  .nav-icon { font-size: 15px; }
+  .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
+  .topbar { padding: 16px 20px; display: flex; align-items: center; justify-content: space-between; border-bottom: 0.5px solid rgba(0,0,0,0.12); background: #ffffff; }
+  .topbar-title { font-size: 16px; font-weight: 500; color: #1a1a18; }
+  .btn { padding: 7px 14px; font-size: 13px; border: 0.5px solid rgba(0,0,0,0.25); border-radius: 8px; background: transparent; color: #1a1a18; cursor: pointer; font-family: inherit; transition: background 0.15s; }
+  .btn:hover { background: #f1efe8; }
+  .btn-primary { background: #1D9E75; color: white; border-color: #1D9E75; }
+  .btn-primary:hover { background: #0F6E56; }
+  .content { padding: 20px; flex: 1; }
+  .section { display: none; }
+  .section.active { display: block; }
+  .stats-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; margin-bottom: 20px; }
+  .stat-card { background: #f1efe8; border-radius: 8px; padding: 14px; }
+  .stat-label { font-size: 12px; color: #888780; margin-bottom: 6px; }
+  .stat-value { font-size: 22px; font-weight: 500; color: #1a1a18; }
+  .stat-sub { font-size: 11px; color: #888780; margin-top: 3px; }
+  .card { background: #ffffff; border: 0.5px solid rgba(0,0,0,0.12); border-radius: 12px; padding: 16px; margin-bottom: 16px; }
+  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .card-title { font-size: 14px; font-weight: 500; color: #1a1a18; }
+  table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  th { text-align: left; font-size: 11px; color: #888780; font-weight: 500; padding: 0 12px 8px 0; border-bottom: 0.5px solid rgba(0,0,0,0.12); text-transform: uppercase; letter-spacing: 0.4px; }
+  td { padding: 10px 12px 10px 0; color: #1a1a18; border-bottom: 0.5px solid rgba(0,0,0,0.08); vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
+  .badge { display: inline-block; padding: 3px 8px; border-radius: 20px; font-size: 11px; font-weight: 500; }
+  .badge-active { background: #E1F5EE; color: #0F6E56; }
+  .badge-returned { background: #f1efe8; color: #5F5E5A; }
+  .badge-overdue { background: #FCEBEB; color: #A32D2D; }
+  .badge-posted { background: #E1F5EE; color: #0F6E56; }
+  .badge-draft { background: #FAEEDA; color: #854F0B; }
+  .modal-bg { display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.3); z-index: 100; align-items: center; justify-content: center; }
+  .modal-bg.open { display: flex; }
+  .modal { background: #ffffff; border-radius: 12px; border: 0.5px solid rgba(0,0,0,0.12); padding: 20px; width: 360px; max-width: 90vw; }
+  .modal-title { font-size: 15px; font-weight: 500; margin-bottom: 16px; color: #1a1a18; }
+  .form-group { margin-bottom: 12px; }
+  .form-label { font-size: 12px; color: #888780; margin-bottom: 5px; display: block; }
+  input, select, textarea { width: 100%; padding: 8px 10px; font-size: 13px; border: 0.5px solid rgba(0,0,0,0.25); border-radius: 8px; background: #ffffff; color: #1a1a18; font-family: inherit; outline: none; }
+  input:focus, select:focus, textarea:focus { border-color: #1D9E75; box-shadow: 0 0 0 2px rgba(29,158,117,0.15); }
+  textarea { resize: vertical; min-height: 70px; }
+  .modal-footer { display: flex; gap: 8px; justify-content: flex-end; margin-top: 16px; }
+  .inbox-item { display: flex; gap: 12px; padding: 12px 0; border-bottom: 0.5px solid rgba(0,0,0,0.08); cursor: pointer; }
+  .inbox-item:last-child { border-bottom: none; }
+  .inbox-avatar { width: 36px; height: 36px; border-radius: 50%; background: #E6F1FB; display: flex; align-items: center; justify-content: center; font-size: 13px; font-weight: 500; color: #185FA5; flex-shrink: 0; }
+  .inbox-name { font-size: 13px; font-weight: 500; color: #1a1a18; }
+  .inbox-msg { font-size: 12px; color: #888780; margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 260px; }
+  .inbox-time { font-size: 11px; color: #888780; margin-left: auto; white-space: nowrap; }
+  .unread-dot { width: 7px; height: 7px; border-radius: 50%; background: #1D9E75; display: inline-block; margin-left: 6px; vertical-align: middle; }
+  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; }
+  @media (max-width: 600px) {
+    .stats-grid { grid-template-columns: 1fr 1fr; }
+    .two-col { grid-template-columns: 1fr; }
+    .sidebar { width: 52px; }
+    .nav-label, .logo-name, .logo-handle { display: none; }
+  }
+</style>
+</head>
+<body>
+<div class="app" id="app">
+  <div class="sidebar">
+    <div class="logo">
+      <div class="logo-name">camlyff</div>
+      <div class="logo-handle">@camlyff</div>
+    </div>
+    <div class="nav-item active" onclick="switchSection('overview', this)">
+      <span class="nav-icon">▦</span><span class="nav-label">Overview</span>
+    </div>
+    <div class="nav-item" onclick="switchSection('rentals', this)">
+      <span class="nav-icon">◎</span><span class="nav-label">Rentals</span>
+    </div>
+    <div class="nav-item" onclick="switchSection('photos', this)">
+      <span class="nav-icon">⊡</span><span class="nav-label">Photos</span>
+    </div>
+    <div class="nav-item" onclick="switchSection('income', this)">
+      <span class="nav-icon">◈</span><span class="nav-label">Income</span>
+    </div>
+    <div class="nav-item" onclick="switchSection('calendar', this)">
+      <span class="nav-icon">⊞</span><span class="nav-label">Calendar</span>
+    </div>
+    <div class="nav-item" onclick="switchSection('inbox', this)">
+      <span class="nav-icon">◻</span><span class="nav-label">Inbox</span>
+    </div>
+  </div>
+
+  <div class="main">
+    <div class="topbar">
+      <span class="topbar-title" id="page-title">Overview</span>
+      <button class="btn btn-primary" id="add-btn" onclick="openModal()">+ Add</button>
+    </div>
+    <div class="content">
+
+      <div class="section active" id="section-overview">
+        <div class="stats-grid">
+          <div class="stat-card"><div class="stat-label">Active rentals</div><div class="stat-value" id="stat-rentals">3</div><div class="stat-sub">cameras out</div></div>
+          <div class="stat-card"><div class="stat-label">Photos tracked</div><div class="stat-value" id="stat-photos">12</div><div class="stat-sub">this month</div></div>
+          <div class="stat-card"><div class="stat-label">Income</div><div class="stat-value" id="stat-income">₹4,200</div><div class="stat-sub">this month</div></div>
+          <div class="stat-card"><div class="stat-label">Collabs</div><div class="stat-value" id="stat-inbox">2</div><div class="stat-sub">unread</div></div>
+        </div>
+        <div class="two-col">
+          <div class="card">
+            <div class="card-header"><span class="card-title">Recent rentals</span></div>
+            <table><thead><tr><th>Renter</th><th>Camera</th><th>Status</th></tr></thead>
+            <tbody id="overview-rentals"></tbody></table>
+          </div>
+          <div class="card">
+            <div class="card-header"><span class="card-title">Upcoming posts</span></div>
+            <table><thead><tr><th>Title</th><th>Date</th><th>Status</th></tr></thead>
+            <tbody id="overview-posts"></tbody></table>
+          </div>
+        </div>
+      </div>
+
+      <div class="section" id="section-rentals">
+        <div class="card">
+          <div class="card-header"><span class="card-title">All rentals</span></div>
+          <table><thead><tr><th>Renter</th><th>Camera</th><th>Rented on</th><th>Return date</th><th>Status</th></tr></thead>
+          <tbody id="rentals-table"></tbody></table>
+        </div>
+      </div>
+
+      <div class="section" id="section-photos">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Photo log</span></div>
+          <table><thead><tr><th>Title</th><th>Date taken</th><th>Camera used</th><th>Instagram</th></tr></thead>
+          <tbody id="photos-table"></tbody></table>
+        </div>
+      </div>
+
+      <div class="section" id="section-income">
+        <div class="stats-grid" style="grid-template-columns: repeat(3, minmax(0,1fr));">
+          <div class="stat-card"><div class="stat-label">Total earned</div><div class="stat-value" id="income-total">₹0</div></div>
+          <div class="stat-card"><div class="stat-label">Paid</div><div class="stat-value" id="income-paid">₹0</div></div>
+          <div class="stat-card"><div class="stat-label">Pending</div><div class="stat-value" id="income-pending">₹0</div></div>
+        </div>
+        <div class="card">
+          <div class="card-header"><span class="card-title">Payment log</span></div>
+          <table><thead><tr><th>From</th><th>Amount</th><th>Date</th><th>Status</th></tr></thead>
+          <tbody id="income-table"></tbody></table>
+        </div>
+      </div>
+
+      <div class="section" id="section-calendar">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Content calendar</span></div>
+          <table><thead><tr><th>Title</th><th>Shoot date</th><th>Post date</th><th>Caption</th><th>Status</th></tr></thead>
+          <tbody id="calendar-table"></tbody></table>
+        </div>
+      </div>
+
+      <div class="section" id="section-inbox">
+        <div class="card">
+          <div class="card-header"><span class="card-title">Collaboration inbox</span></div>
+          <div id="inbox-list"></div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+</div>
+
+<div class="modal-bg" id="modal-bg">
+  <div class="modal" id="modal-content"></div>
+</div>
+
+<script>
+let data = {
+  rentals: [
+    { renter: 'Arjun S.', camera: 'Sony A7III', rentedOn: '2026-03-25', returnDate: '2026-04-01', status: 'active' },
+    { renter: 'Priya K.', camera: 'Canon R6', rentedOn: '2026-03-20', returnDate: '2026-03-28', status: 'overdue' },
+    { renter: 'Dev M.', camera: 'Fuji XT5', rentedOn: '2026-03-29', returnDate: '2026-04-05', status: 'active' }
+  ],
+  photos: [
+    { title: 'Golden hour at Cubbon', date: '2026-03-28', camera: 'Sony A7III', posted: 'posted' },
+    { title: 'Street market series', date: '2026-03-25', camera: 'Fuji XT5', posted: 'draft' },
+    { title: 'Rooftop sunset', date: '2026-03-22', camera: 'Canon R6', posted: 'posted' }
+  ],
+  income: [
+    { from: 'Arjun S.', amount: 1500, date: '2026-03-25', status: 'paid' },
+    { from: 'Dev M.', amount: 1200, date: '2026-03-29', status: 'pending' },
+    { from: 'Priya K.', amount: 1500, date: '2026-03-20', status: 'paid' }
+  ],
+  calendar: [
+    { title: 'Monsoon prep shoot', shootDate: '2026-04-03', postDate: '2026-04-05', caption: 'Ready for the rains', status: 'draft' },
+    { title: 'Market morning walk', shootDate: '2026-04-07', postDate: '2026-04-08', caption: 'Early mornings hit different', status: 'draft' },
+    { title: 'Studio collab w/ Priya', shootDate: '2026-03-30', postDate: '2026-04-01', caption: 'Shooting with @priyak', status: 'posted' }
+  ],
+  inbox: [
+    { name: 'Riya T.', initials: 'RT', msg: 'Hey! Would love to collab on a shoot next week around Indiranagar.', time: '2h ago', read: false },
+    { name: 'Vikram S.', initials: 'VS', msg: 'Hi, wanted to discuss a brand partnership for April.', time: '5h ago', read: false },
+    { name: 'Meera J.', initials: 'MJ', msg: 'Loved your last post! Can we do something similar?', time: 'Yesterday', read: true }
+  ]
+};
+
+let activeSection = 'overview';
+
+function switchSection(name, el) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.getElementById('section-' + name).classList.add('active');
+  el.classList.add('active');
+  document.getElementById('page-title').textContent = el.querySelector('.nav-label') ? el.querySelector('.nav-label').textContent : name;
+  activeSection = name;
+  renderAll();
+}
+
+function renderAll() {
+  renderRentals(); renderPhotos(); renderIncome(); renderCalendar(); renderInbox(); renderOverview(); updateStats();
+}
+
+function badgeHtml(status) {
+  const map = { active: 'badge-active', returned: 'badge-returned', overdue: 'badge-overdue', posted: 'badge-posted', draft: 'badge-draft', paid: 'badge-active', pending: 'badge-draft' };
+  return '<span class="badge ' + (map[status] || 'badge-returned') + '">' + status + '</span>';
+}
+
+function renderRentals() {
+  document.getElementById('rentals-table').innerHTML = data.rentals.map(r =>
+    '<tr><td>' + r.renter + '</td><td>' + r.camera + '</td><td>' + r.rentedOn + '</td><td>' + r.returnDate + '</td><td>' + badgeHtml(r.status) + '</td></tr>'
+  ).join('');
+}
+
+function renderPhotos() {
+  document.getElementById('photos-table').innerHTML = data.photos.map(p =>
+    '<tr><td>' + p.title + '</td><td>' + p.date + '</td><td>' + p.camera + '</td><td>' + badgeHtml(p.posted) + '</td></tr>'
+  ).join('');
+}
+
+function renderIncome() {
+  const total = data.income.reduce((s, i) => s + i.amount, 0);
+  const paid = data.income.filter(i => i.status === 'paid').reduce((s, i) => s + i.amount, 0);
+  document.getElementById('income-total').textContent = '₹' + total.toLocaleString();
+  document.getElementById('income-paid').textContent = '₹' + paid.toLocaleString();
+  document.getElementById('income-pending').textContent = '₹' + (total - paid).toLocaleString();
+  document.getElementById('income-table').innerHTML = data.income.map(i =>
+    '<tr><td>' + i.from + '</td><td>₹' + i.amount.toLocaleString() + '</td><td>' + i.date + '</td><td>' + badgeHtml(i.status) + '</td></tr>'
+  ).join('');
+}
+
+function renderCalendar() {
+  document.getElementById('calendar-table').innerHTML = data.calendar.map(c =>
+    '<tr><td>' + c.title + '</td><td>' + c.shootDate + '</td><td>' + c.postDate + '</td><td style="max-width:140px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">' + c.caption + '</td><td>' + badgeHtml(c.status) + '</td></tr>'
+  ).join('');
+}
+
+function renderInbox() {
+  document.getElementById('inbox-list').innerHTML = data.inbox.map(m =>
+    '<div class="inbox-item"><div class="inbox-avatar">' + m.initials + '</div><div style="flex:1;min-width:0;"><div class="inbox-name">' + m.name + (!m.read ? '<span class="unread-dot"></span>' : '') + '</div><div class="inbox-msg">' + m.msg + '</div></div><div class="inbox-time">' + m.time + '</div></div>'
+  ).join('');
+}
+
+function renderOverview() {
+  document.getElementById('overview-rentals').innerHTML = data.rentals.slice(0, 3).map(r =>
+    '<tr><td>' + r.renter + '</td><td>' + r.camera + '</td><td>' + badgeHtml(r.status) + '</td></tr>'
+  ).join('');
+  document.getElementById('overview-posts').innerHTML = data.calendar.slice(0, 3).map(c =>
+    '<tr><td>' + c.title + '</td><td>' + c.postDate + '</td><td>' + badgeHtml(c.status) + '</td></tr>'
+  ).join('');
+}
+
+function updateStats() {
+  document.getElementById('stat-rentals').textContent = data.rentals.filter(r => r.status === 'active').length;
+  document.getElementById('stat-photos').textContent = data.photos.length;
+  const inc = data.income.reduce((s, i) => s + i.amount, 0);
+  document.getElementById('stat-income').textContent = '₹' + inc.toLocaleString();
+  document.getElementById('stat-inbox').textContent = data.inbox.filter(m => !m.read).length;
+}
+
+const modalForms = {
+  rentals: () => '<div class="modal-title">Add rental</div><div class="form-group"><label class="form-label">Renter name</label><input id="f-renter" placeholder="e.g. Arjun S." /></div><div class="form-group"><label class="form-label">Camera</label><input id="f-camera" placeholder="e.g. Sony A7III" /></div><div class="form-group"><label class="form-label">Rented on</label><input id="f-renton" type="date" /></div><div class="form-group"><label class="form-label">Return date</label><input id="f-return" type="date" /></div><div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveRental()">Save</button></div>',
+  photos: () => '<div class="modal-title">Log a photo</div><div class="form-group"><label class="form-label">Title</label><input id="f-ptitle" placeholder="e.g. Golden hour at Cubbon" /></div><div class="form-group"><label class="form-label">Date taken</label><input id="f-pdate" type="date" /></div><div class="form-group"><label class="form-label">Camera used</label><input id="f-pcam" placeholder="e.g. Fuji XT5" /></div><div class="form-group"><label class="form-label">Status</label><select id="f-pstatus"><option value="draft">Draft</option><option value="posted">Posted</option></select></div><div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="savePhoto()">Save</button></div>',
+  income: () => '<div class="modal-title">Add payment</div><div class="form-group"><label class="form-label">From</label><input id="f-ifrom" placeholder="e.g. Arjun S." /></div><div class="form-group"><label class="form-label">Amount (₹)</label><input id="f-iamt" type="number" placeholder="1500" /></div><div class="form-group"><label class="form-label">Date</label><input id="f-idate" type="date" /></div><div class="form-group"><label class="form-label">Status</label><select id="f-istatus"><option value="pending">Pending</option><option value="paid">Paid</option></select></div><div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveIncome()">Save</button></div>',
+  calendar: () => '<div class="modal-title">Add to calendar</div><div class="form-group"><label class="form-label">Title</label><input id="f-ctitle" placeholder="e.g. Monsoon shoot" /></div><div class="form-group"><label class="form-label">Shoot date</label><input id="f-cshoot" type="date" /></div><div class="form-group"><label class="form-label">Post date</label><input id="f-cpost" type="date" /></div><div class="form-group"><label class="form-label">Caption idea</label><textarea id="f-ccap" placeholder="Write a caption..."></textarea></div><div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveCalendar()">Save</button></div>',
+  inbox: () => '<div class="modal-title">New message</div><div class="form-group"><label class="form-label">Name</label><input id="f-iname" placeholder="Collaborator name" /></div><div class="form-group"><label class="form-label">Initials</label><input id="f-iinit" placeholder="e.g. RT" maxlength="2" /></div><div class="form-group"><label class="form-label">Message</label><textarea id="f-imsg" placeholder="Write the message..."></textarea></div><div class="modal-footer"><button class="btn" onclick="closeModal()">Cancel</button><button class="btn btn-primary" onclick="saveInbox()">Save</button></div>',
+  overview: function() { return this.rentals(); }
+};
+
+function openModal() {
+  document.getElementById('modal-content').innerHTML = (modalForms[activeSection] || modalForms.rentals)();
+  document.getElementById('modal-bg').classList.add('open');
+}
+function closeModal() { document.getElementById('modal-bg').classList.remove('open'); }
+document.getElementById('modal-bg').addEventListener('click', e => { if (e.target === document.getElementById('modal-bg')) closeModal(); });
+
+function saveRental() {
+  const r = document.getElementById('f-renter').value; const c = document.getElementById('f-camera').value;
+  const ron = document.getElementById('f-renton').value; const ret = document.getElementById('f-return').value;
+  if (!r || !c) return;
+  data.rentals.unshift({ renter: r, camera: c, rentedOn: ron || new Date().toISOString().slice(0,10), returnDate: ret || '', status: 'active' });
+  closeModal(); renderAll();
+}
+function savePhoto() {
+  const t = document.getElementById('f-ptitle').value; const d = document.getElementById('f-pdate').value;
+  const c = document.getElementById('f-pcam').value; const s = document.getElementById('f-pstatus').value;
+  if (!t) return;
+  data.photos.unshift({ title: t, date: d || new Date().toISOString().slice(0,10), camera: c, posted: s });
+  closeModal(); renderAll();
+}
+function saveIncome() {
+  const f = document.getElementById('f-ifrom').value; const a = parseFloat(document.getElementById('f-iamt').value) || 0;
+  const d = document.getElementById('f-idate').value; const s = document.getElementById('f-istatus').value;
+  if (!f) return;
+  data.income.unshift({ from: f, amount: a, date: d || new Date().toISOString().slice(0,10), status: s });
+  closeModal(); renderAll();
+}
+function saveCalendar() {
+  const t = document.getElementById('f-ctitle').value; const sh = document.getElementById('f-cshoot').value;
+  const po = document.getElementById('f-cpost').value; const ca = document.getElementById('f-ccap').value;
+  if (!t) return;
+  data.calendar.unshift({ title: t, shootDate: sh || '', postDate: po || '', caption: ca, status: 'draft' });
+  closeModal(); renderAll();
+}
+function saveInbox() {
+  const n = document.getElementById('f-iname').value; const i = document.getElementById('f-iinit').value;
+  const m = document.getElementById('f-imsg').value;
+  if (!n) return;
+  data.inbox.unshift({ name: n, initials: i || n.slice(0,2).toUpperCase(), msg: m, time: 'Just now', read: false });
+  closeModal(); renderAll();
+}
+
+renderAll();
+</script>
+</body>
+</html>

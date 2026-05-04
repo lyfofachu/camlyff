@@ -1,0 +1,45 @@
+/*
+  style.css — Camlyff Website
+  ─────────────────────────────────────────────────────────────────
+  NOTE: The main design system lives in the <style> block inside
+  index.html. This file only holds supplemental overrides that do
+  NOT conflict with those inline rules. Any previously conflicting
+  selectors (navbar, preloader, whatsapp-btn, progress-bar, hero,
+  etc.) have been removed so they no longer fight the primary styles.
+*/
+
+/* HIDE INSTAGRAM WIDGET BADGE */
+.eapps-instagram-feed-posts-item-meta {
+  display: none !important;
+}
+
+.eapps-link {
+  display: none !important;
+}
+
+/* Login container (admin page helper) */
+.login-container {
+  width: 300px;
+  margin: 150px auto;
+  text-align: center;
+}
+
+.login-container input {
+  width: 100%;
+  padding: 10px;
+  margin: 10px 0;
+  background: #111;
+  border: 1px solid #333;
+  color: white;
+}
+
+.login-container button {
+  width: 100%;
+  padding: 10px;
+  margin: 8px 0;
+  background: linear-gradient(135deg, #FF2D2D, #CC0000);
+  border: none;
+  color: white;
+  cursor: pointer;
+  box-shadow: 0 0 12px rgba(255, 45, 45, 0.4);
+}
