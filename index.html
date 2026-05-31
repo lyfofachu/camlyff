@@ -2297,7 +2297,7 @@
       <li><a href="#work-feed">About</a></li>
       <li><a href="#work-feed">Contact</a></li>
     </ul>
-    <!-- Dashboard button hidden from clients. Press Ctrl+Shift+D to open -->
+    <button class="nav-dash-btn" onclick="openDashboard()">Dashboard</button>
   </nav>
 
   <!-- ══════════════════════════════════════════
@@ -4999,14 +4999,6 @@
 
     function openDashboard() { document.getElementById('dashboard-overlay').classList.add('open'); renderAll(); }
     function closeDashboard() { document.getElementById('dashboard-overlay').classList.remove('open'); }
-
-    /* Secret shortcut: Ctrl+Shift+D opens dashboard (hidden from clients) */
-    document.addEventListener('keydown', function(e) {
-      if (e.ctrlKey && e.shiftKey && (e.key === 'D' || e.key === 'd')) {
-        e.preventDefault();
-        openDashboard();
-      }
-    });
 
     function dashSwitch(name, el) {
       document.querySelectorAll('.dash-section').forEach(s => s.classList.remove('active'));

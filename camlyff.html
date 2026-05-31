@@ -4,6 +4,98 @@
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 <title>Camlyff Dashboard</title>
+<!-- Password gate: prevent flash of dashboard content -->
+<style>
+  #dash-gate {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: #0d0d0d;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    flex-direction: column;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  }
+  #dash-gate .gate-box {
+    background: #1a1a1a;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 16px;
+    padding: 40px 36px;
+    width: 340px;
+    max-width: 90vw;
+    box-shadow: 0 24px 64px rgba(0,0,0,0.6);
+    text-align: center;
+  }
+  #dash-gate .gate-logo {
+    font-size: 22px;
+    font-weight: 600;
+    color: #ffffff;
+    letter-spacing: -0.5px;
+    margin-bottom: 4px;
+  }
+  #dash-gate .gate-sub {
+    font-size: 12px;
+    color: #555;
+    margin-bottom: 28px;
+  }
+  #dash-gate input[type="password"] {
+    width: 100%;
+    padding: 11px 14px;
+    font-size: 14px;
+    border: 1px solid rgba(255,255,255,0.1);
+    border-radius: 10px;
+    background: rgba(255,255,255,0.05);
+    color: #fff;
+    outline: none;
+    transition: border-color 0.2s;
+    text-align: center;
+    letter-spacing: 3px;
+    box-sizing: border-box;
+  }
+  #dash-gate input[type="password"]::placeholder {
+    letter-spacing: normal;
+    color: #444;
+  }
+  #dash-gate input[type="password"]:focus {
+    border-color: rgba(29,158,117,0.6);
+    box-shadow: 0 0 0 3px rgba(29,158,117,0.12);
+  }
+  #dash-gate .gate-btn {
+    margin-top: 14px;
+    width: 100%;
+    padding: 11px;
+    font-size: 14px;
+    font-weight: 500;
+    border: none;
+    border-radius: 10px;
+    background: #1D9E75;
+    color: #fff;
+    cursor: pointer;
+    transition: background 0.15s, transform 0.1s;
+    font-family: inherit;
+  }
+  #dash-gate .gate-btn:hover { background: #0F6E56; }
+  #dash-gate .gate-btn:active { transform: scale(0.98); }
+  #dash-gate .gate-error {
+    margin-top: 12px;
+    font-size: 12px;
+    color: #e05c5c;
+    min-height: 16px;
+    transition: opacity 0.2s;
+  }
+  @keyframes gateShake {
+    0%,100% { transform: translateX(0); }
+    20%      { transform: translateX(-8px); }
+    40%      { transform: translateX(8px); }
+    60%      { transform: translateX(-6px); }
+    80%      { transform: translateX(6px); }
+  }
+  #dash-gate.shake .gate-box { animation: gateShake 0.4s ease; }
+  /* Hide app until unlocked */
+  body.gate-locked #app,
+  body.gate-locked #modal-bg { visibility: hidden; }
+</style>
 <style>
   *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; background: #f5f5f3; color: #1a1a18; }
@@ -332,6 +424,64 @@ function saveInbox() {
 }
 
 renderAll();
+</script>
+<!-- ═══ DASHBOARD GATE ═══ -->
+<div id="dash-gate">
+  <div class="gate-box">
+    <div class="gate-logo">camlyff</div>
+    <div class="gate-sub">Admin dashboard — private access only</div>
+    <input type="password" id="gate-pwd" placeholder="Enter password" autocomplete="current-password" />
+    <button class="gate-btn" onclick="gateUnlock()">Unlock →</button>
+    <div class="gate-error" id="gate-err"></div>
+  </div>
+</div>
+
+<script>
+  /* ── Dashboard password gate ── */
+  (function () {
+    const PASS = 'camlyff2025';          // ← change this to your own password
+    const SESSION_KEY = 'clf_dash_auth';
+
+    var gate = document.getElementById('dash-gate');
+    var body = document.body;
+
+    // If already authenticated this session, skip gate immediately
+    if (sessionStorage.getItem(SESSION_KEY) === '1') {
+      gate.style.display = 'none';
+    } else {
+      body.classList.add('gate-locked');
+      // Focus input after a short delay
+      setTimeout(function () {
+        var inp = document.getElementById('gate-pwd');
+        if (inp) inp.focus();
+      }, 120);
+    }
+
+    // Allow Enter key to submit
+    document.getElementById('gate-pwd').addEventListener('keydown', function (e) {
+      if (e.key === 'Enter') gateUnlock();
+    });
+
+    window.gateUnlock = function () {
+      var inp = document.getElementById('gate-pwd');
+      var err = document.getElementById('gate-err');
+      if (inp.value === PASS) {
+        sessionStorage.setItem(SESSION_KEY, '1');
+        body.classList.remove('gate-locked');
+        gate.style.opacity = '0';
+        gate.style.transition = 'opacity 0.35s ease';
+        setTimeout(function () { gate.style.display = 'none'; }, 360);
+      } else {
+        err.textContent = 'Incorrect password. Try again.';
+        inp.value = '';
+        // Shake animation
+        gate.classList.remove('shake');
+        void gate.offsetWidth; // force reflow
+        gate.classList.add('shake');
+        setTimeout(function () { gate.classList.remove('shake'); inp.focus(); }, 450);
+      }
+    };
+  })();
 </script>
 </body>
 </html>
