@@ -3,10 +3,22 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+  <meta name="theme-color" content="#080406" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="mobile-web-app-capable" content="yes" />
   <title>CAMLYFF – Creative Photography</title>
   <meta name="description"
     content="CAMLYFF – Creative photography portfolio. Visual storytelling through light, composition and emotion. Camera rentals & content planning." />
+  <!-- Open Graph -->
+  <meta property="og:title" content="CAMLYFF – Creative Photography" />
+  <meta property="og:description" content="Visual storytelling through light, composition and emotion. Book a shoot, rent gear, or explore our portfolio." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://lyfofachu.github.io/camlyff/" />
+  <meta property="og:image" content="https://lyfofachu.github.io/camlyff/images/logo.png" />
+  <!-- Favicon -->
+  <link rel="icon" type="image/png" href="images/logo.png" />
   <!-- Google Fonts: non-render-blocking -->
   <link rel="preconnect" href="https://fonts.googleapis.com" />
   <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
@@ -20,21 +32,47 @@
   </noscript>
   <!-- EmailJS — client-side email sending (no backend needed) -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" async></script>
-  <!-- Firebase SDK -->
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <!-- Firebase SDK (deferred - not render-critical) -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" defer></script>
   <script>
-    // Firebase config
-    const firebaseConfig = {
-      apiKey: "AIzaSyAY-_5djDBWTd3sgXqG3e_2YU69o47Vg-I",
-      authDomain: "camlyff-e4b9e.firebaseapp.com",
-      projectId: "camlyff-e4b9e",
-      storageBucket: "camlyff-e4b9e.firebasestorage.app",
-      messagingSenderId: "909601858935",
-      appId: "1:909601858935:web:4e905cec94e9f3417a2d72"
-    };
-    firebase.initializeApp(firebaseConfig);
-    var db = firebase.firestore();
+    // Firebase config — init after deferred SDK loads
+    var db = null;
+    document.addEventListener('DOMContentLoaded', function() {
+      if (typeof firebase !== 'undefined') {
+        firebase.initializeApp({
+          apiKey: "AIzaSyAY-_5djDBWTd3sgXqG3e_2YU69o47Vg-I",
+          authDomain: "camlyff-e4b9e.firebaseapp.com",
+          projectId: "camlyff-e4b9e",
+          storageBucket: "camlyff-e4b9e.firebasestorage.app",
+          messagingSenderId: "909601858935",
+          appId: "1:909601858935:web:4e905cec94e9f3417a2d72"
+        });
+        db = firebase.firestore();
+        console.log('[Firebase] Initialized successfully');
+        if (typeof loadFromFirestore === 'function') loadFromFirestore();
+      } else {
+        console.warn('[Firebase] SDK not loaded yet — retrying...');
+        var retries = 0;
+        var checkInterval = setInterval(function() {
+          if (typeof firebase !== 'undefined') {
+            clearInterval(checkInterval);
+            firebase.initializeApp({
+              apiKey: "AIzaSyAY-_5djDBWTd3sgXqG3e_2YU69o47Vg-I",
+              authDomain: "camlyff-e4b9e.firebaseapp.com",
+              projectId: "camlyff-e4b9e",
+              storageBucket: "camlyff-e4b9e.firebasestorage.app",
+              messagingSenderId: "909601858935",
+              appId: "1:909601858935:web:4e905cec94e9f3417a2d72"
+            });
+            db = firebase.firestore();
+            console.log('[Firebase] Initialized (deferred)');
+            if (typeof loadFromFirestore === 'function') loadFromFirestore();
+          }
+          if (++retries > 20) clearInterval(checkInterval);
+        }, 200);
+      }
+    });
   </script>
   <style>
     /* ══════════════════════════════════════════
@@ -2245,6 +2283,28 @@
       .stat-value {
         font-size: 32px;
       }
+    }
+
+    /* ── Mobile performance & layout enhancements ── */
+    @media (max-width: 768px) {
+      /* Disable 3D canvas on mobile for huge perf gains */
+      #bg-canvas { display: none !important; }
+      /* Services grid single column */
+      .services-grid { grid-template-columns: 1fr !important; gap: 16px; }
+      .gear-grid { grid-template-columns: 1fr 1fr !important; gap: 12px; }
+      /* Touch-friendly tap targets */
+      .btn-primary, .btn-outline, .nav-dash-btn { min-height: 44px; min-width: 44px; }
+      /* Prevent horizontal overflow */
+      .site-wrap, #work-feed, .services-section, .gear-section { overflow-x: hidden; }
+      /* Testimonials better spacing */
+      .testimonials-section { padding: 60px 0; }
+      .testimonial-carousel { min-height: 300px; }
+      /* Portfolio cards touch-friendly */
+      .pf-card { border-radius: 12px; }
+      .pf-overlay { opacity: 1; background: linear-gradient(transparent 50%, rgba(0,0,0,.6) 100%); }
+    }
+    @media (max-width: 400px) {
+      .gear-grid { grid-template-columns: 1fr !important; }
     }
 
     /* ──────────────────────────────────────────
