@@ -35,6 +35,7 @@
   <!-- Firebase SDK (deferred - not render-critical) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" defer></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" defer></script>
   <script>
     // Firebase config — init after deferred SDK loads
     var db = null;
@@ -4201,6 +4202,45 @@
   </script>
 
   <!-- ══════════════════════════════════════════
+     ADMIN LOGIN SCREEN
+══════════════════════════════════════════ -->
+  <style>
+    .login-overlay{position:fixed;inset:0;z-index:7000;background:rgba(8,4,6,.98);backdrop-filter:blur(30px);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .4s ease}
+    .login-overlay.open{opacity:1;pointer-events:auto}
+    .login-card{width:min(400px,90vw);padding:40px 32px;border-radius:20px;background:rgba(255,255,255,.03);border:1px solid rgba(255,45,45,.15);backdrop-filter:blur(20px);text-align:center}
+    .login-card h2{font-family:var(--font-heading);font-size:24px;font-weight:700;margin-bottom:6px;color:#fff}
+    .login-card p{font-size:13px;color:var(--muted);margin-bottom:28px}
+    .login-field{width:100%;padding:14px 16px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:10px;color:var(--text);font-family:var(--font-body);font-size:16px;outline:none;margin-bottom:14px;transition:border-color .2s}
+    .login-field:focus{border-color:#FF2D2D;box-shadow:0 0 0 3px rgba(255,45,45,.15)}
+    .login-submit{width:100%;padding:14px;border:none;border-radius:10px;background:linear-gradient(135deg,#FF2D2D,#CC0000);color:#fff;font-size:14px;font-weight:700;letter-spacing:1px;cursor:pointer;font-family:var(--font-ui);text-transform:uppercase;box-shadow:0 4px 28px rgba(255,45,45,.4);transition:all .25s;margin-top:4px}
+    .login-submit:hover{background:linear-gradient(135deg,#FF4444,#FF0000);box-shadow:0 6px 44px rgba(255,45,45,.7);transform:translateY(-2px)}
+    .login-submit:disabled{opacity:.5;cursor:wait;transform:none}
+    .login-error{color:#FF4444;font-size:12px;margin-top:12px;min-height:18px}
+    .login-divider{width:50px;height:1px;background:rgba(255,45,45,.3);margin:20px auto 16px}
+    .login-close{position:absolute;top:20px;right:24px;background:none;border:none;color:rgba(255,255,255,.4);font-size:24px;cursor:pointer;transition:color .2s}
+    .login-close:hover{color:#fff}
+    .login-logo{font-family:var(--font-display);font-size:42px;letter-spacing:3px;color:#fff;margin-bottom:4px;background:linear-gradient(150deg,#FFFFFF 0%,#FFD0D0 55%,#FF8080 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+    .login-secure{display:inline-flex;align-items:center;gap:6px;font-size:10px;color:var(--muted);letter-spacing:1px;margin-top:16px}
+    .login-secure::before{content:'🔒'}
+  </style>
+  <div class="login-overlay" id="login-overlay">
+    <button class="login-close" onclick="closeLogin()" aria-label="Close">&times;</button>
+    <div class="login-card">
+      <div class="login-logo">CAMLYFF</div>
+      <h2>Admin Login</h2>
+      <p>Sign in to access the dashboard</p>
+      <div class="login-divider"></div>
+      <form onsubmit="return handleLogin(event)">
+        <input type="email" id="login-email" class="login-field" placeholder="admin@camlyff.com" autocomplete="email" required />
+        <input type="password" id="login-password" class="login-field" placeholder="Password" autocomplete="current-password" required />
+        <button type="submit" class="login-submit" id="login-btn">🔐 Sign In</button>
+      </form>
+      <div class="login-error" id="login-error"></div>
+      <div class="login-secure">Secured by Firebase Authentication</div>
+    </div>
+  </div>
+
+  <!-- ══════════════════════════════════════════
      DASHBOARD OVERLAY
 ══════════════════════════════════════════ -->
   <div id="dashboard-overlay">
@@ -4240,6 +4280,8 @@
           </div>
         </nav>
         <div class="dash-sidebar-bottom">
+          <div style="padding:0 12px 8px;font-size:10px;color:var(--muted);letter-spacing:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="dash-user-email"></div>
+          <button class="dash-close-btn" onclick="handleLogout()" style="color:#FF4444;border-color:rgba(255,45,45,.2);margin-bottom:8px">🔒 Sign Out</button>
           <button class="dash-close-btn" onclick="closeDashboard()">← Return to Site</button>
         </div>
       </div>
@@ -5338,8 +5380,102 @@
     let data = loadData();
     let dashActive = 'overview';
 
-    function openDashboard() { document.getElementById('dashboard-overlay').classList.add('open'); renderAll(); }
+    /* ── Auth-gated dashboard ── */
+    var _adminUser = null;
+    function openDashboard() {
+      /* Check if already authenticated */
+      if (_adminUser) {
+        document.getElementById('dashboard-overlay').classList.add('open');
+        renderAll();
+        return;
+      }
+      /* Check Firebase Auth state */
+      if (typeof firebase !== 'undefined' && firebase.auth) {
+        var user = firebase.auth().currentUser;
+        if (user) {
+          _adminUser = user;
+          document.getElementById('dash-user-email').textContent = user.email;
+          document.getElementById('dashboard-overlay').classList.add('open');
+          renderAll();
+          return;
+        }
+      }
+      /* Not authenticated — show login */
+      document.getElementById('login-overlay').classList.add('open');
+      document.getElementById('login-email').focus();
+    }
     function closeDashboard() { document.getElementById('dashboard-overlay').classList.remove('open'); }
+    function closeLogin() { document.getElementById('login-overlay').classList.remove('open'); }
+
+    function handleLogin(e) {
+      e.preventDefault();
+      var email = document.getElementById('login-email').value.trim();
+      var pass = document.getElementById('login-password').value;
+      var btn = document.getElementById('login-btn');
+      var err = document.getElementById('login-error');
+      err.textContent = '';
+      btn.disabled = true;
+      btn.textContent = '⏳ Signing in...';
+
+      if (typeof firebase === 'undefined' || !firebase.auth) {
+        err.textContent = 'Firebase Auth not loaded. Please refresh and try again.';
+        btn.disabled = false; btn.textContent = '🔐 Sign In';
+        return false;
+      }
+
+      firebase.auth().signInWithEmailAndPassword(email, pass)
+        .then(function(cred) {
+          _adminUser = cred.user;
+          console.log('[Auth] Signed in:', cred.user.email);
+          document.getElementById('dash-user-email').textContent = cred.user.email;
+          closeLogin();
+          document.getElementById('dashboard-overlay').classList.add('open');
+          renderAll();
+          btn.disabled = false; btn.textContent = '🔐 Sign In';
+        })
+        .catch(function(error) {
+          console.error('[Auth] Login failed:', error);
+          var msg = 'Login failed';
+          if (error.code === 'auth/user-not-found') msg = 'No admin account found with this email';
+          else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') msg = 'Incorrect password';
+          else if (error.code === 'auth/invalid-email') msg = 'Invalid email address';
+          else if (error.code === 'auth/too-many-requests') msg = 'Too many attempts. Try again later.';
+          else msg = error.message;
+          err.textContent = msg;
+          btn.disabled = false; btn.textContent = '🔐 Sign In';
+        });
+      return false;
+    }
+
+    function handleLogout() {
+      if (typeof firebase !== 'undefined' && firebase.auth) {
+        firebase.auth().signOut().then(function() {
+          _adminUser = null;
+          closeDashboard();
+          console.log('[Auth] Signed out');
+        });
+      } else {
+        _adminUser = null;
+        closeDashboard();
+      }
+    }
+
+    /* Listen for auth state changes (auto-login on refresh) */
+    document.addEventListener('DOMContentLoaded', function() {
+      var checkAuth = setInterval(function() {
+        if (typeof firebase !== 'undefined' && firebase.auth) {
+          clearInterval(checkAuth);
+          firebase.auth().onAuthStateChanged(function(user) {
+            if (user) {
+              _adminUser = user;
+              console.log('[Auth] Auto-login:', user.email);
+              var emailEl = document.getElementById('dash-user-email');
+              if (emailEl) emailEl.textContent = user.email;
+            }
+          });
+        }
+      }, 200);
+    });
 
     function dashSwitch(name, el) {
       document.querySelectorAll('.dash-section').forEach(s => s.classList.remove('active'));
