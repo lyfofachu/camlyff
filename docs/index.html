@@ -4309,6 +4309,9 @@
           <div class="dash-nav-item" id="nav-bookings" onclick="dashSwitch('bookings',this)">
             <span class="dash-nav-icon">📷</span><span class="dash-nav-label">Bookings</span><span class="dash-nav-badge" id="nav-badge-bookings" style="display:none"></span>
           </div>
+          <div class="dash-nav-item" id="nav-emails" onclick="dashSwitch('emails',this)">
+            <span class="dash-nav-icon">✉️</span><span class="dash-nav-label">Email Templates</span>
+          </div>
         </nav>
         <div class="dash-sidebar-bottom">
           <div style="padding:0 12px 8px;font-size:10px;color:var(--muted);letter-spacing:1px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" id="dash-user-email"></div>
@@ -4585,7 +4588,51 @@
               </div>
             </div>
 
-          </div><!-- /dash-section-instagram -->\r\n\r\n          <!-- BOOKINGS -->\r\n          <div class="dash-section" id="dash-section-bookings">\r\n            <div class="dash-card" style="overflow-x:auto">\r\n              <div class="dash-card-header">\r\n                <span class="dash-card-title">📋 All Bookings</span>\r\n                <button onclick="loadBookingsFromFirestore()" style="background:rgba(255,45,45,.15);border:1px solid rgba(255,45,45,.3);color:#FF6060;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:11px;letter-spacing:1px">↻ Refresh</button>\r\n              </div>\r\n              <div id="bookings-loading" style="padding:20px;text-align:center;color:var(--muted);display:none">Loading bookings from Firestore...</div>\r\n              <table class="dash-table" id="bookings-table">\r\n                <thead>\r\n                  <tr>\r\n                    <th>Client</th>\r\n                    <th>Phone</th>\r\n                    <th>Camera</th>\r\n                    <th>Shoot Date</th>\r\n                    <th>Duration</th>\r\n                    <th>Price</th>\r\n                    <th>Status</th>\r\n                    <th>Booked At</th>\r\n                    <th>Actions</th>\r\n                  </tr>\r\n                </thead>\r\n                <tbody id="d-bookings-body">\r\n                  <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px">Open the Bookings tab to load data</td></tr>\r\n                </tbody>\r\n              </table>\r\n              <div style="padding:12px 16px;font-size:11px;color:var(--muted);border-top:1px solid rgba(255,255,255,.06)">Total: <span id="bookings-total-count">0</span> bookings · Revenue: <span id="bookings-total-revenue">₹0</span></div>\r\n            </div>\r\n          </div><!-- /dash-section-bookings -->
+          </div><!-- /dash-section-instagram -->
+
+          <!-- BOOKINGS -->
+          <div class="dash-section" id="dash-section-bookings">
+            <div class="dash-card" style="overflow-x:auto">
+              <div class="dash-card-header">
+                <span class="dash-card-title">📋 All Bookings</span>
+                <button onclick="loadBookingsFromFirestore()" style="background:rgba(255,45,45,.15);border:1px solid rgba(255,45,45,.3);color:#FF6060;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:11px;letter-spacing:1px">↻ Refresh</button>
+              </div>
+              <div id="bookings-loading" style="padding:20px;text-align:center;color:var(--muted);display:none">Loading bookings from Firestore...</div>
+              <table class="dash-table" id="bookings-table">
+                <thead>
+                  <tr>
+                    <th>Client</th>
+                    <th>Phone</th>
+                    <th>Camera</th>
+                    <th>Shoot Date</th>
+                    <th>Duration</th>
+                    <th>Price</th>
+                    <th>Status</th>
+                    <th>Booked At</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="d-bookings-body">
+                  <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px">Open the Bookings tab to load data</td></tr>
+                </tbody>
+              </table>
+              <div style="padding:12px 16px;font-size:11px;color:var(--muted);border-top:1px solid rgba(255,255,255,.06)">Total: <span id="bookings-total-count">0</span> bookings · Revenue: <span id="bookings-total-revenue">₹0</span></div>
+            </div>
+          </div>
+
+          <!-- EMAIL TEMPLATES -->
+          <div class="dash-section" id="dash-section-emails">
+            <div class="dash-card">
+              <div class="dash-card-header">
+                <span class="dash-card-title">✉️ Email Templates</span>
+                <button onclick="loadEmailTemplates()" style="background:rgba(255,45,45,.15);border:1px solid rgba(255,45,45,.3);color:#FF6060;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:11px;letter-spacing:1px">↻ Refresh</button>
+              </div>
+              <p style="padding:0 16px 12px;font-size:12px;color:var(--muted)">Edit email subjects and body templates. Changes saved to SQL and used for all future emails.</p>
+              <div id="email-templates-container" style="padding:0 16px 16px">
+                <div style="text-align:center;color:var(--muted);padding:24px">Open Email Templates tab to load</div>
+              </div>
+            </div>
+          </div><!-- /dash-section-emails -->
 
         </div>
       </div>
@@ -5692,7 +5739,6 @@
     }
     function closeModal() { document.getElementById('modal-bg').classList.remove('open'); }
     document.getElementById('modal-bg').addEventListener('click', e => { if (e.target === document.getElementById('modal-bg')) closeModal(); });
-
     function saveRental() {
       const r = document.getElementById('f-renter').value.trim();
       const c = document.getElementById('f-camera').value.trim();
@@ -5702,6 +5748,98 @@
       data.rentals.unshift({ id: nextId(), renter: r, camera: c, rentedOn: ron || new Date().toISOString().slice(0, 10), returnDate: ret || '', status: 'active' });
       saveData(); closeModal(); renderAll();
     }
+
+    /* Auto-load when switching tabs */
+    var _origDashSwitch = window.dashSwitch;
+    window.dashSwitch = function(tab, el) {
+      _origDashSwitch(tab, el);
+      if (tab === 'bookings') loadBookingsFromFirestore();
+      if (tab === 'emails') loadEmailTemplates();
+    };
+
+    /* ── EMAIL TEMPLATES CRUD (Supabase SQL) ── */
+    var _defaultTemplates = [
+      { type: 'booking_confirmation', subject: '✅ Booking Confirmed — CAMLYFF', body: 'Hi {{name}},\n\nYour booking is confirmed!\n\n📷 Camera: {{camera}}\n📅 Date: {{date}}\n⏱ Duration: {{duration}}\n💰 Price: {{price}}\n\nWe\'ll reach out to finalize details. Thank you for choosing CAMLYFF!\n\nBest,\nTeam CAMLYFF' },
+      { type: 'admin_notification', subject: '🔔 New Booking — {{name}}', body: 'New booking received!\n\n👤 Client: {{name}}\n📱 Phone: {{phone}}\n📷 Camera: {{camera}}\n📅 Date: {{date}}\n⏱ Duration: {{duration}}\n💰 Price: {{price}}\n📧 Email: {{email}}\n\nCheck dashboard for details.' },
+      { type: 'password_reset', subject: '🔐 Password Reset — CAMLYFF Admin', body: 'Hi Admin,\n\nYou requested a password reset for your CAMLYFF dashboard.\n\nClick the link below to reset:\n{{reset_link}}\n\nIf you didn\'t request this, ignore this email.\n\n— CAMLYFF' }
+    ];
+
+    window.loadEmailTemplates = function() {
+      var container = document.getElementById('email-templates-container');
+      if (!container) return;
+      if (!_supa) {
+        container.innerHTML = '<div style="text-align:center;color:#FF6060;padding:24px">⚠️ Supabase not connected.</div>';
+        return;
+      }
+      container.innerHTML = '<div style="text-align:center;color:var(--muted);padding:24px">Loading...</div>';
+      _supa.from('email_templates').select('*').order('id', { ascending: true })
+        .then(function(res) {
+          if (res.error) {
+            /* Table might not exist yet — show defaults with init button */
+            container.innerHTML = '<div style="text-align:center;padding:24px"><p style="color:#FFB800;margin-bottom:12px">⚠️ email_templates table not found.</p><button onclick="initDefaultTemplates()" style="background:linear-gradient(135deg,#FF2D2D,#CC0000);color:#fff;border:none;padding:12px 24px;border-radius:10px;cursor:pointer;font-weight:700;font-size:13px">🚀 Create Table & Load Defaults</button></div>';
+            return;
+          }
+          if (!res.data || !res.data.length) {
+            container.innerHTML = '<div style="text-align:center;padding:24px"><p style="color:var(--muted);margin-bottom:12px">No templates yet.</p><button onclick="initDefaultTemplates()" style="background:linear-gradient(135deg,#FF2D2D,#CC0000);color:#fff;border:none;padding:12px 24px;border-radius:10px;cursor:pointer;font-weight:700;font-size:13px">🚀 Load Default Templates</button></div>';
+            return;
+          }
+          renderEmailTemplates(res.data);
+        });
+    };
+
+    function renderEmailTemplates(templates) {
+      var container = document.getElementById('email-templates-container');
+      if (!container) return;
+      var typeLabels = { booking_confirmation: '📩 Booking Confirmation (to Customer)', admin_notification: '🔔 Admin Notification (to You)', password_reset: '🔐 Password Reset' };
+      var typeColors = { booking_confirmation: '#25D366', admin_notification: '#FFB800', password_reset: '#6C63FF' };
+      container.innerHTML = templates.map(function(t) {
+        var label = typeLabels[t.type] || t.type;
+        var color = typeColors[t.type] || '#FF2D2D';
+        return '<div style="border:1px solid rgba(255,255,255,.08);border-radius:14px;padding:20px;margin-bottom:16px;background:rgba(255,255,255,.02)">' +
+          '<div style="display:flex;align-items:center;gap:8px;margin-bottom:14px">' +
+            '<div style="width:8px;height:8px;border-radius:50%;background:' + color + ';box-shadow:0 0 8px ' + color + '"></div>' +
+            '<span style="font-size:13px;font-weight:600;color:#fff">' + label + '</span>' +
+            '<span style="font-size:10px;color:var(--muted);letter-spacing:1px;margin-left:auto">' + t.type + '</span>' +
+          '</div>' +
+          '<label style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:6px">Subject</label>' +
+          '<input id="tpl-subj-' + t.id + '" value="' + (t.subject || '').replace(/"/g, '&quot;') + '" style="width:100%;padding:10px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:var(--text);font-family:var(--font-body);font-size:14px;outline:none;margin-bottom:12px" />' +
+          '<label style="font-size:11px;color:var(--muted);letter-spacing:1px;text-transform:uppercase;display:block;margin-bottom:6px">Body</label>' +
+          '<textarea id="tpl-body-' + t.id + '" rows="6" style="width:100%;padding:10px 14px;background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);border-radius:8px;color:var(--text);font-family:var(--font-body);font-size:13px;outline:none;resize:vertical;line-height:1.6">' + (t.body || '') + '</textarea>' +
+          '<div style="display:flex;gap:8px;margin-top:10px;justify-content:flex-end">' +
+            '<button onclick="saveEmailTemplate(' + t.id + ')" style="background:rgba(37,211,102,.15);border:1px solid rgba(37,211,102,.3);color:#25D366;padding:8px 16px;border-radius:8px;cursor:pointer;font-size:12px;font-weight:600">💾 Save</button>' +
+          '</div>' +
+        '</div>';
+      }).join('');
+    }
+
+    window.saveEmailTemplate = function(id) {
+      if (!_supa) return;
+      var subj = document.getElementById('tpl-subj-' + id);
+      var body = document.getElementById('tpl-body-' + id);
+      if (!subj || !body) return;
+      _supa.from('email_templates').update({ subject: subj.value, body: body.value }).eq('id', id)
+        .then(function(res) {
+          if (res.error) { alert('Save failed: ' + res.error.message); return; }
+          /* Flash green border */
+          subj.style.borderColor = '#25D366'; body.style.borderColor = '#25D366';
+          setTimeout(function() { subj.style.borderColor = ''; body.style.borderColor = ''; }, 1500);
+          console.log('[SQL] Template #' + id + ' saved');
+        });
+    };
+
+    window.initDefaultTemplates = function() {
+      if (!_supa) { alert('Supabase not connected'); return; }
+      _supa.from('email_templates').insert(_defaultTemplates)
+        .then(function(res) {
+          if (res.error) {
+            alert('Failed: ' + res.error.message + '\n\nYou may need to create the email_templates table first. See the walkthrough for SQL.');
+            return;
+          }
+          console.log('[SQL] Default templates inserted');
+          loadEmailTemplates();
+        });
+    };
+
     function savePhoto() {
       const t = document.getElementById('f-ptitle').value.trim();
       const d = document.getElementById('f-pdate').value;
