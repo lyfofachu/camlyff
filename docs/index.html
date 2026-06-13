@@ -3,7 +3,7 @@
 
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=5.0, viewport-fit=cover" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
   <meta name="theme-color" content="#080406" />
   <meta name="apple-mobile-web-app-capable" content="yes" />
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
@@ -3459,7 +3459,7 @@
       border-radius: 10px;
       color: var(--text);
       font-family: var(--font-body);
-      font-size: 14px;
+      font-size: 16px; /* 16px prevents iOS auto-zoom on focus */
       outline: none;
       transition: border-color .2s, box-shadow .2s;
       color-scheme: dark;
@@ -4038,8 +4038,29 @@
 
         stored.nextId = newId + 3;
 
-        /* Save back */
+        /* Save back to localStorage */
         try { localStorage.setItem('camlyff_data', JSON.stringify(stored)); } catch (e) { }
+
+        /* Save booking to Firestore bookings collection */
+        if (typeof db !== 'undefined' && db !== null) {
+          var bookingDoc = {
+            id: newId,
+            name: name || 'Guest',
+            phone: phone || '',
+            camera: camName,
+            date: date,
+            duration: dur,
+            price: price,
+            status: 'pending',
+            bookedAt: new Date().toISOString(),
+            channel: 'website'
+          };
+          db.collection('bookings').add(bookingDoc)
+            .then(function() { console.log('[Firestore] Booking saved'); })
+            .catch(function(e) { console.warn('[Firestore] Booking save failed:', e); });
+          /* Also sync full dashboard data */
+          if (typeof saveData === 'function') { data = stored; saveData(); }
+        }
 
         /* Live-refresh dashboard if it's open */
         if (typeof renderAll === 'function') {
@@ -4213,6 +4234,9 @@
           <div class="dash-nav-item" id="nav-instagram" onclick="dashSwitch('instagram',this)">
             <span class="dash-nav-icon">◈</span><span class="dash-nav-label"
               style="background:linear-gradient(90deg,#f09433,#e6683c,#dc2743,#cc2366,#bc1888);-webkit-background-clip:text;-webkit-text-fill-color:transparent">Instagram</span>
+          </div>
+          <div class="dash-nav-item" id="nav-bookings" onclick="dashSwitch('bookings',this)">
+            <span class="dash-nav-icon">📷</span><span class="dash-nav-label">Bookings</span><span class="dash-nav-badge" id="nav-badge-bookings" style="display:none"></span>
           </div>
         </nav>
         <div class="dash-sidebar-bottom">
@@ -4488,7 +4512,7 @@
               </div>
             </div>
 
-          </div><!-- /dash-section-instagram -->
+          </div><!-- /dash-section-instagram -->\r\n\r\n          <!-- BOOKINGS -->\r\n          <div class="dash-section" id="dash-section-bookings">\r\n            <div class="dash-card" style="overflow-x:auto">\r\n              <div class="dash-card-header">\r\n                <span class="dash-card-title">📋 All Bookings</span>\r\n                <button onclick="loadBookingsFromFirestore()" style="background:rgba(255,45,45,.15);border:1px solid rgba(255,45,45,.3);color:#FF6060;padding:6px 14px;border-radius:8px;cursor:pointer;font-size:11px;letter-spacing:1px">↻ Refresh</button>\r\n              </div>\r\n              <div id="bookings-loading" style="padding:20px;text-align:center;color:var(--muted);display:none">Loading bookings from Firestore...</div>\r\n              <table class="dash-table" id="bookings-table">\r\n                <thead>\r\n                  <tr>\r\n                    <th>Client</th>\r\n                    <th>Phone</th>\r\n                    <th>Camera</th>\r\n                    <th>Shoot Date</th>\r\n                    <th>Duration</th>\r\n                    <th>Price</th>\r\n                    <th>Status</th>\r\n                    <th>Booked At</th>\r\n                    <th>Actions</th>\r\n                  </tr>\r\n                </thead>\r\n                <tbody id="d-bookings-body">\r\n                  <tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px">Open the Bookings tab to load data</td></tr>\r\n                </tbody>\r\n              </table>\r\n              <div style="padding:12px 16px;font-size:11px;color:var(--muted);border-top:1px solid rgba(255,255,255,.06)">Total: <span id="bookings-total-count">0</span> bookings · Revenue: <span id="bookings-total-revenue">₹0</span></div>\r\n            </div>\r\n          </div><!-- /dash-section-bookings -->
 
         </div>
       </div>
@@ -5565,6 +5589,107 @@
 
     renderAll();
     loadFromFirestore();
+
+    /* ── BOOKINGS CRUD (Firestore) ── */
+    var _bookingsCache = [];
+
+    window.loadBookingsFromFirestore = function() {
+      var loading = document.getElementById('bookings-loading');
+      var tbody = document.getElementById('d-bookings-body');
+      if (loading) loading.style.display = '';
+      if (typeof db === 'undefined' || db === null) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#FF6060;padding:24px">⚠️ Firebase not connected. Check console for errors.</td></tr>';
+        if (loading) loading.style.display = 'none';
+        return;
+      }
+      db.collection('bookings').orderBy('bookedAt', 'desc').get()
+        .then(function(snap) {
+          _bookingsCache = [];
+          snap.forEach(function(doc) {
+            var d = doc.data();
+            d._docId = doc.id;
+            _bookingsCache.push(d);
+          });
+          renderBookingsTable(_bookingsCache);
+          if (loading) loading.style.display = 'none';
+          /* Update badge */
+          var badge = document.getElementById('nav-badge-bookings');
+          if (badge) {
+            var pending = _bookingsCache.filter(function(b) { return b.status === 'pending'; }).length;
+            if (pending > 0) { badge.textContent = pending; badge.style.display = ''; }
+            else { badge.style.display = 'none'; }
+          }
+          console.log('[Bookings] Loaded ' + _bookingsCache.length + ' bookings');
+        })
+        .catch(function(e) {
+          console.error('[Bookings] Load failed:', e);
+          if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#FF6060;padding:24px">❌ Failed to load: ' + e.message + '</td></tr>';
+          if (loading) loading.style.display = 'none';
+        });
+    };
+
+    function renderBookingsTable(bookings) {
+      var tbody = document.getElementById('d-bookings-body');
+      if (!tbody) return;
+      if (!bookings.length) {
+        tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:24px">No bookings yet. When clients book through the website, they\'ll appear here.</td></tr>';
+        return;
+      }
+      var total = 0;
+      tbody.innerHTML = bookings.map(function(b, i) {
+        total += (b.price || 0);
+        var statusClass = b.status === 'confirmed' ? 'color:#25D366' : (b.status === 'completed' ? 'color:#6C63FF' : (b.status === 'cancelled' ? 'color:#FF4444;text-decoration:line-through' : 'color:#FFB800'));
+        var statusIcon = b.status === 'confirmed' ? '✅' : (b.status === 'completed' ? '🏁' : (b.status === 'cancelled' ? '❌' : '⏳'));
+        var bookedDate = b.bookedAt ? new Date(b.bookedAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '-';
+        return '<tr>' +
+          '<td style="font-weight:600">' + (b.name || 'Guest') + '</td>' +
+          '<td>' + (b.phone || '-') + '</td>' +
+          '<td>' + (b.camera || '-') + '</td>' +
+          '<td>' + (b.date || '-') + '</td>' +
+          '<td>' + (b.duration || '-') + '</td>' +
+          '<td style="font-weight:600">₹' + (b.price || 0).toLocaleString() + '</td>' +
+          '<td style="' + statusClass + ';font-weight:600">' + statusIcon + ' ' + (b.status || 'pending') + '</td>' +
+          '<td style="font-size:11px;color:var(--muted)">' + bookedDate + '</td>' +
+          '<td>' +
+            (b.status !== 'confirmed' && b.status !== 'completed' ? '<button onclick="updateBookingStatus(\'' + b._docId + '\',\'confirmed\')" style="background:rgba(37,211,102,.15);border:1px solid rgba(37,211,102,.3);color:#25D366;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:10px;margin:2px" title="Confirm">✓</button>' : '') +
+            (b.status === 'confirmed' ? '<button onclick="updateBookingStatus(\'' + b._docId + '\',\'completed\')" style="background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3);color:#6C63FF;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:10px;margin:2px" title="Complete">🏁</button>' : '') +
+            (b.status !== 'cancelled' && b.status !== 'completed' ? '<button onclick="updateBookingStatus(\'' + b._docId + '\',\'cancelled\')" style="background:rgba(255,45,45,.1);border:1px solid rgba(255,45,45,.2);color:#FF4444;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:10px;margin:2px" title="Cancel">✕</button>' : '') +
+            '<button onclick="deleteBooking(\'' + b._docId + '\')" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:var(--muted);padding:4px 8px;border-radius:6px;cursor:pointer;font-size:10px;margin:2px" title="Delete">🗑</button>' +
+          '</td></tr>';
+      }).join('');
+      var countEl = document.getElementById('bookings-total-count');
+      var revEl = document.getElementById('bookings-total-revenue');
+      if (countEl) countEl.textContent = bookings.length;
+      if (revEl) revEl.textContent = '₹' + total.toLocaleString();
+    }
+
+    window.updateBookingStatus = function(docId, newStatus) {
+      if (!db) return;
+      db.collection('bookings').doc(docId).update({ status: newStatus })
+        .then(function() {
+          console.log('[Bookings] Updated ' + docId + ' → ' + newStatus);
+          loadBookingsFromFirestore();
+        })
+        .catch(function(e) { alert('Update failed: ' + e.message); });
+    };
+
+    window.deleteBooking = function(docId) {
+      if (!confirm('Delete this booking permanently?')) return;
+      if (!db) return;
+      db.collection('bookings').doc(docId).delete()
+        .then(function() {
+          console.log('[Bookings] Deleted ' + docId);
+          loadBookingsFromFirestore();
+        })
+        .catch(function(e) { alert('Delete failed: ' + e.message); });
+    };
+
+    /* Auto-load bookings when switching to bookings tab */
+    var _origDashSwitch = window.dashSwitch;
+    window.dashSwitch = function(tab, el) {
+      _origDashSwitch(tab, el);
+      if (tab === 'bookings') loadBookingsFromFirestore();
+    };
 
     /* ============================================================
        INSTAGRAM SYNC — powered by Behold.so
