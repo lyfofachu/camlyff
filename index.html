@@ -32,10 +32,35 @@
   </noscript>
   <!-- EmailJS — client-side email sending (no backend needed) -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" async></script>
-  <!-- Firebase SDK (deferred - not render-critical) -->
+  <!-- Firebase SDK (deferred - dashboard data only) -->
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js" defer></script>
   <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js" defer></script>
-  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js" defer></script>
+  <!-- Supabase SDK (SQL database + Auth) -->
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js" defer></script>
+  <script>
+    var _supa = null;
+    document.addEventListener('DOMContentLoaded', function() {
+      var checkSupa = setInterval(function() {
+        if (typeof supabase !== 'undefined' && supabase.createClient) {
+          clearInterval(checkSupa);
+          _supa = supabase.createClient(
+            'https://xsjkffudpkfuzqubyqtk.supabase.co',
+            'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzamtmZnVkcGtmdXpxdWJ5cXRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjY1NzAsImV4cCI6MjA5Njk0MjU3MH0.w4wk98jsrL7jXRTq06CKH3CovHhuHMVHkL8XDbKsM-0'
+          );
+          console.log('[Supabase] Client initialized');
+          /* Check if already logged in */
+          _supa.auth.getSession().then(function(res) {
+            if (res.data.session) {
+              _adminUser = res.data.session.user;
+              console.log('[Supabase] Auto-login:', _adminUser.email);
+              var emailEl = document.getElementById('dash-user-email');
+              if (emailEl) emailEl.textContent = _adminUser.email;
+            }
+          });
+        }
+      }, 150);
+    });
+  </script>
   <script>
     // Firebase config — init after deferred SDK loads
     var db = null;
@@ -4042,10 +4067,9 @@
         /* Save back to localStorage */
         try { localStorage.setItem('camlyff_data', JSON.stringify(stored)); } catch (e) { }
 
-        /* Save booking to Firestore bookings collection */
-        if (typeof db !== 'undefined' && db !== null) {
-          var bookingDoc = {
-            id: newId,
+        /* Save booking to Supabase SQL database */
+        if (_supa) {
+          _supa.from('bookings').insert({
             name: name || 'Guest',
             phone: phone || '',
             camera: camName,
@@ -4053,13 +4077,20 @@
             duration: dur,
             price: price,
             status: 'pending',
-            bookedAt: new Date().toISOString(),
             channel: 'website'
-          };
-          db.collection('bookings').add(bookingDoc)
-            .then(function() { console.log('[Firestore] Booking saved'); })
-            .catch(function(e) { console.warn('[Firestore] Booking save failed:', e); });
-          /* Also sync full dashboard data */
+          }).then(function(res) {
+            if (res.error) console.warn('[Supabase] Booking save failed:', res.error.message);
+            else console.log('[Supabase] Booking saved to SQL');
+          });
+          /* Also sync dashboard data to Firestore */
+          if (typeof saveData === 'function') { data = stored; saveData(); }
+        } else if (typeof db !== 'undefined' && db !== null) {
+          /* Fallback to Firestore if Supabase not loaded */
+          db.collection('bookings').add({
+            name: name || 'Guest', phone: phone || '', camera: camName,
+            date: date, duration: dur, price: price,
+            status: 'pending', bookedAt: new Date().toISOString(), channel: 'website'
+          }).catch(function(e) { console.warn('[Firestore] fallback save failed:', e); });
           if (typeof saveData === 'function') { data = stored; saveData(); }
         }
 
@@ -4236,7 +4267,7 @@
         <button type="submit" class="login-submit" id="login-btn">🔐 Sign In</button>
       </form>
       <div class="login-error" id="login-error"></div>
-      <div class="login-secure">Secured by Firebase Authentication</div>
+      <div class="login-secure">Secured by Supabase Authentication</div>
     </div>
   </div>
 
@@ -5417,39 +5448,40 @@
       btn.disabled = true;
       btn.textContent = '⏳ Signing in...';
 
-      if (typeof firebase === 'undefined' || !firebase.auth) {
-        err.textContent = 'Firebase Auth not loaded. Please refresh and try again.';
+      if (!_supa) {
+        err.textContent = 'Supabase not loaded yet. Please wait and try again.';
         btn.disabled = false; btn.textContent = '🔐 Sign In';
         return false;
       }
 
-      firebase.auth().signInWithEmailAndPassword(email, pass)
-        .then(function(cred) {
-          _adminUser = cred.user;
-          console.log('[Auth] Signed in:', cred.user.email);
-          document.getElementById('dash-user-email').textContent = cred.user.email;
+      _supa.auth.signInWithPassword({ email: email, password: pass })
+        .then(function(res) {
+          if (res.error) {
+            console.error('[Auth] Login failed:', res.error);
+            var msg = res.error.message || 'Login failed';
+            if (msg.includes('Invalid login')) msg = 'Invalid email or password';
+            err.textContent = msg;
+            btn.disabled = false; btn.textContent = '🔐 Sign In';
+            return;
+          }
+          _adminUser = res.data.user;
+          console.log('[Auth] Signed in via Supabase:', _adminUser.email);
+          document.getElementById('dash-user-email').textContent = _adminUser.email;
           closeLogin();
           document.getElementById('dashboard-overlay').classList.add('open');
           renderAll();
           btn.disabled = false; btn.textContent = '🔐 Sign In';
         })
         .catch(function(error) {
-          console.error('[Auth] Login failed:', error);
-          var msg = 'Login failed';
-          if (error.code === 'auth/user-not-found') msg = 'No admin account found with this email';
-          else if (error.code === 'auth/wrong-password' || error.code === 'auth/invalid-credential') msg = 'Incorrect password';
-          else if (error.code === 'auth/invalid-email') msg = 'Invalid email address';
-          else if (error.code === 'auth/too-many-requests') msg = 'Too many attempts. Try again later.';
-          else msg = error.message;
-          err.textContent = msg;
+          err.textContent = error.message || 'Login failed';
           btn.disabled = false; btn.textContent = '🔐 Sign In';
         });
       return false;
     }
 
     function handleLogout() {
-      if (typeof firebase !== 'undefined' && firebase.auth) {
-        firebase.auth().signOut().then(function() {
+      if (_supa) {
+        _supa.auth.signOut().then(function() {
           _adminUser = null;
           closeDashboard();
           console.log('[Auth] Signed out');
@@ -5459,23 +5491,6 @@
         closeDashboard();
       }
     }
-
-    /* Listen for auth state changes (auto-login on refresh) */
-    document.addEventListener('DOMContentLoaded', function() {
-      var checkAuth = setInterval(function() {
-        if (typeof firebase !== 'undefined' && firebase.auth) {
-          clearInterval(checkAuth);
-          firebase.auth().onAuthStateChanged(function(user) {
-            if (user) {
-              _adminUser = user;
-              console.log('[Auth] Auto-login:', user.email);
-              var emailEl = document.getElementById('dash-user-email');
-              if (emailEl) emailEl.textContent = user.email;
-            }
-          });
-        }
-      }, 200);
-    });
 
     function dashSwitch(name, el) {
       document.querySelectorAll('.dash-section').forEach(s => s.classList.remove('active'));
@@ -5726,26 +5741,27 @@
     renderAll();
     loadFromFirestore();
 
-    /* ── BOOKINGS CRUD (Firestore) ── */
+    /* ── BOOKINGS CRUD (Supabase SQL) ── */
     var _bookingsCache = [];
 
     window.loadBookingsFromFirestore = function() {
       var loading = document.getElementById('bookings-loading');
       var tbody = document.getElementById('d-bookings-body');
       if (loading) loading.style.display = '';
-      if (typeof db === 'undefined' || db === null) {
-        if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#FF6060;padding:24px">⚠️ Firebase not connected. Check console for errors.</td></tr>';
+      if (!_supa) {
+        if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#FF6060;padding:24px">⚠️ Supabase not connected. Please refresh.</td></tr>';
         if (loading) loading.style.display = 'none';
         return;
       }
-      db.collection('bookings').orderBy('bookedAt', 'desc').get()
-        .then(function(snap) {
-          _bookingsCache = [];
-          snap.forEach(function(doc) {
-            var d = doc.data();
-            d._docId = doc.id;
-            _bookingsCache.push(d);
-          });
+      _supa.from('bookings').select('*').order('created_at', { ascending: false })
+        .then(function(res) {
+          if (res.error) {
+            console.error('[SQL] Load failed:', res.error);
+            if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#FF6060;padding:24px">❌ ' + res.error.message + '</td></tr>';
+            if (loading) loading.style.display = 'none';
+            return;
+          }
+          _bookingsCache = res.data || [];
           renderBookingsTable(_bookingsCache);
           if (loading) loading.style.display = 'none';
           /* Update badge */
@@ -5755,12 +5771,7 @@
             if (pending > 0) { badge.textContent = pending; badge.style.display = ''; }
             else { badge.style.display = 'none'; }
           }
-          console.log('[Bookings] Loaded ' + _bookingsCache.length + ' bookings');
-        })
-        .catch(function(e) {
-          console.error('[Bookings] Load failed:', e);
-          if (tbody) tbody.innerHTML = '<tr><td colspan="9" style="text-align:center;color:#FF6060;padding:24px">❌ Failed to load: ' + e.message + '</td></tr>';
-          if (loading) loading.style.display = 'none';
+          console.log('[SQL] Loaded ' + _bookingsCache.length + ' bookings from PostgreSQL');
         });
     };
 
@@ -5772,11 +5783,11 @@
         return;
       }
       var total = 0;
-      tbody.innerHTML = bookings.map(function(b, i) {
+      tbody.innerHTML = bookings.map(function(b) {
         total += (b.price || 0);
         var statusClass = b.status === 'confirmed' ? 'color:#25D366' : (b.status === 'completed' ? 'color:#6C63FF' : (b.status === 'cancelled' ? 'color:#FF4444;text-decoration:line-through' : 'color:#FFB800'));
         var statusIcon = b.status === 'confirmed' ? '✅' : (b.status === 'completed' ? '🏁' : (b.status === 'cancelled' ? '❌' : '⏳'));
-        var bookedDate = b.bookedAt ? new Date(b.bookedAt).toLocaleDateString('en-IN', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '-';
+        var bookedDate = b.created_at ? new Date(b.created_at).toLocaleDateString('en-IN', {day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'}) : '-';
         return '<tr>' +
           '<td style="font-weight:600">' + (b.name || 'Guest') + '</td>' +
           '<td>' + (b.phone || '-') + '</td>' +
@@ -5787,10 +5798,10 @@
           '<td style="' + statusClass + ';font-weight:600">' + statusIcon + ' ' + (b.status || 'pending') + '</td>' +
           '<td style="font-size:11px;color:var(--muted)">' + bookedDate + '</td>' +
           '<td>' +
-            (b.status !== 'confirmed' && b.status !== 'completed' ? '<button onclick="updateBookingStatus(\'' + b._docId + '\',\'confirmed\')" style="background:rgba(37,211,102,.15);border:1px solid rgba(37,211,102,.3);color:#25D366;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:10px;margin:2px" title="Confirm">✓</button>' : '') +
-            (b.status === 'confirmed' ? '<button onclick="updateBookingStatus(\'' + b._docId + '\',\'completed\')" style="background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3);color:#6C63FF;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:10px;margin:2px" title="Complete">🏁</button>' : '') +
-            (b.status !== 'cancelled' && b.status !== 'completed' ? '<button onclick="updateBookingStatus(\'' + b._docId + '\',\'cancelled\')" style="background:rgba(255,45,45,.1);border:1px solid rgba(255,45,45,.2);color:#FF4444;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:10px;margin:2px" title="Cancel">✕</button>' : '') +
-            '<button onclick="deleteBooking(\'' + b._docId + '\')" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:var(--muted);padding:4px 8px;border-radius:6px;cursor:pointer;font-size:10px;margin:2px" title="Delete">🗑</button>' +
+            (b.status !== 'confirmed' && b.status !== 'completed' ? '<button onclick="updateBookingStatus(' + b.id + ',\'confirmed\')" style="background:rgba(37,211,102,.15);border:1px solid rgba(37,211,102,.3);color:#25D366;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:10px;margin:2px" title="Confirm">✓</button>' : '') +
+            (b.status === 'confirmed' ? '<button onclick="updateBookingStatus(' + b.id + ',\'completed\')" style="background:rgba(108,99,255,.15);border:1px solid rgba(108,99,255,.3);color:#6C63FF;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:10px;margin:2px" title="Complete">🏁</button>' : '') +
+            (b.status !== 'cancelled' && b.status !== 'completed' ? '<button onclick="updateBookingStatus(' + b.id + ',\'cancelled\')" style="background:rgba(255,45,45,.1);border:1px solid rgba(255,45,45,.2);color:#FF4444;padding:4px 8px;border-radius:6px;cursor:pointer;font-size:10px;margin:2px" title="Cancel">✕</button>' : '') +
+            '<button onclick="deleteBooking(' + b.id + ')" style="background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.1);color:var(--muted);padding:4px 8px;border-radius:6px;cursor:pointer;font-size:10px;margin:2px" title="Delete">🗑</button>' +
           '</td></tr>';
       }).join('');
       var countEl = document.getElementById('bookings-total-count');
@@ -5799,25 +5810,25 @@
       if (revEl) revEl.textContent = '₹' + total.toLocaleString();
     }
 
-    window.updateBookingStatus = function(docId, newStatus) {
-      if (!db) return;
-      db.collection('bookings').doc(docId).update({ status: newStatus })
-        .then(function() {
-          console.log('[Bookings] Updated ' + docId + ' → ' + newStatus);
+    window.updateBookingStatus = function(id, newStatus) {
+      if (!_supa) return;
+      _supa.from('bookings').update({ status: newStatus }).eq('id', id)
+        .then(function(res) {
+          if (res.error) { alert('Update failed: ' + res.error.message); return; }
+          console.log('[SQL] Updated booking #' + id + ' → ' + newStatus);
           loadBookingsFromFirestore();
-        })
-        .catch(function(e) { alert('Update failed: ' + e.message); });
+        });
     };
 
-    window.deleteBooking = function(docId) {
+    window.deleteBooking = function(id) {
       if (!confirm('Delete this booking permanently?')) return;
-      if (!db) return;
-      db.collection('bookings').doc(docId).delete()
-        .then(function() {
-          console.log('[Bookings] Deleted ' + docId);
+      if (!_supa) return;
+      _supa.from('bookings').delete().eq('id', id)
+        .then(function(res) {
+          if (res.error) { alert('Delete failed: ' + res.error.message); return; }
+          console.log('[SQL] Deleted booking #' + id);
           loadBookingsFromFirestore();
-        })
-        .catch(function(e) { alert('Delete failed: ' + e.message); });
+        });
     };
 
     /* Auto-load bookings when switching to bookings tab */
