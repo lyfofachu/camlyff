@@ -20,6 +20,22 @@
   </noscript>
   <!-- EmailJS — client-side email sending (no backend needed) -->
   <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js" async></script>
+  <!-- Firebase SDK -->
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+  <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+  <script>
+    // Firebase config
+    const firebaseConfig = {
+      apiKey: "AIzaSyAY-_5djDBWTd3sgXqG3e_2YU69o47Vg-I",
+      authDomain: "camlyff-e4b9e.firebaseapp.com",
+      projectId: "camlyff-e4b9e",
+      storageBucket: "camlyff-e4b9e.firebasestorage.app",
+      messagingSenderId: "909601858935",
+      appId: "1:909601858935:web:4e905cec94e9f3417a2d72"
+    };
+    firebase.initializeApp(firebaseConfig);
+    var db = firebase.firestore();
+  </script>
   <style>
     /* ══════════════════════════════════════════
        RESET & TOKENS
@@ -2230,6 +2246,111 @@
         font-size: 32px;
       }
     }
+
+    /* ──────────────────────────────────────────
+       HAMBURGER MENU & MOBILE OVERLAY
+    ────────────────────────────────────────── */
+    .hamburger {
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 8px;
+      z-index: 1001;
+    }
+    .hamburger span {
+      display: block;
+      width: 24px;
+      height: 2px;
+      background: #fff;
+      border-radius: 2px;
+      transition: all .3s cubic-bezier(.22,1,.36,1);
+      transform-origin: center;
+    }
+    .hamburger.active span:nth-child(1) { transform: translateY(7px) rotate(45deg); }
+    .hamburger.active span:nth-child(2) { opacity: 0; transform: scaleX(0); }
+    .hamburger.active span:nth-child(3) { transform: translateY(-7px) rotate(-45deg); }
+
+    .mobile-menu {
+      position: fixed;
+      inset: 0;
+      z-index: 999;
+      background: rgba(8,4,6,.97);
+      backdrop-filter: blur(30px);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      pointer-events: none;
+      transition: opacity .4s cubic-bezier(.22,1,.36,1);
+    }
+    .mobile-menu.open {
+      opacity: 1;
+      pointer-events: auto;
+    }
+    .mobile-menu-inner {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 8px;
+    }
+    .mobile-menu-link {
+      font-family: var(--font-heading);
+      font-size: clamp(28px, 7vw, 42px);
+      font-weight: 700;
+      color: rgba(255,255,255,.7);
+      text-decoration: none;
+      letter-spacing: 1px;
+      padding: 8px 16px;
+      border: none;
+      background: none;
+      cursor: pointer;
+      transition: color .25s, transform .25s;
+      opacity: 0;
+      transform: translateY(20px);
+    }
+    .mobile-menu.open .mobile-menu-link {
+      opacity: 1;
+      transform: translateY(0);
+      transition: color .25s, transform .5s cubic-bezier(.22,1,.36,1) calc(var(--i) * .08s),
+                  opacity .5s ease calc(var(--i) * .08s);
+    }
+    .mobile-menu-link:hover, .mobile-menu-link:focus {
+      color: #FF2D2D;
+      transform: translateX(8px);
+    }
+    .mobile-menu-divider {
+      width: 60px;
+      height: 1px;
+      background: rgba(255,45,45,.4);
+      margin: 12px 0;
+    }
+    .mobile-menu-social {
+      display: flex;
+      gap: 16px;
+      margin-top: 24px;
+    }
+    .mobile-menu-social a {
+      font-size: 13px;
+      color: var(--muted);
+      text-decoration: none;
+      padding: 8px 16px;
+      border: 1px solid rgba(255,45,45,.2);
+      border-radius: 20px;
+      transition: all .25s;
+    }
+    .mobile-menu-social a:hover {
+      border-color: #FF2D2D;
+      color: #FF4D4D;
+    }
+
+    @media (max-width: 768px) {
+      .hamburger { display: flex; }
+      .nav-links { display: none !important; }
+      .nav-dash-btn { display: none; }
+    }
   </style>
 </head>
 
@@ -2298,7 +2419,27 @@
       <li><a href="#work-feed">Contact</a></li>
     </ul>
     <button class="nav-dash-btn" onclick="openDashboard()">Dashboard</button>
+    <!-- Mobile Hamburger -->
+    <button class="hamburger" id="hamburger" aria-label="Menu" onclick="toggleMobileMenu()">
+      <span></span><span></span><span></span>
+    </button>
   </nav>
+
+  <!-- MOBILE MENU OVERLAY -->
+  <div class="mobile-menu" id="mobile-menu">
+    <div class="mobile-menu-inner">
+      <a href="#work-feed" class="mobile-menu-link" onclick="closeMobileMenu()" style="--i:0">Work</a>
+      <a href="#services" class="mobile-menu-link" onclick="closeMobileMenu()" style="--i:1">Services</a>
+      <a href="#gear" class="mobile-menu-link" onclick="closeMobileMenu()" style="--i:2">Our Kit</a>
+      <div class="mobile-menu-divider"></div>
+      <button class="mobile-menu-link" onclick="closeMobileMenu();openBookingModal();" style="--i:3">📷 Book a Shoot</button>
+      <button class="mobile-menu-link" onclick="closeMobileMenu();openDashboard();" style="--i:4">Dashboard</button>
+      <div class="mobile-menu-social">
+        <a href="https://instagram.com/camlyff" target="_blank" rel="noopener">📷 @camlyff</a>
+        <a href="https://wa.me/919392526227" target="_blank" rel="noopener">📱 WhatsApp</a>
+      </div>
+    </div>
+  </div>
 
   <!-- ══════════════════════════════════════════
      SCROLL CONTAINER  (drives 3D scene)
@@ -2812,7 +2953,8 @@
           return;
         }
         if (lbl) lbl.textContent = posts.length + ' posts' + (currentCat !== 'all' ? ' in this category' : '') + ' · live from @camlyff';
-        grid.innerHTML = posts.map(function (p) {
+        window._pfCurrentPosts = posts;
+        grid.innerHTML = posts.map(function (p, pIdx) {
           var img = p.sizes && p.sizes.medium ? p.sizes.medium.mediaUrl : (p.mediaUrl || '');
           var link = p.permalink || 'https://www.instagram.com/camlyff';
           var cap = (p.caption || '').replace(/#\w+/g, '').trim().slice(0, 120) || '@camlyff';
@@ -2822,7 +2964,7 @@
           var catLabel = currentCat !== 'all' ? currentCat.toUpperCase() : classify(p).toUpperCase();
           var date = p.timestamp ? new Date(p.timestamp).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' }) : '';
           return [
-            '<a class="pf-card" href="' + link + '" target="_blank" rel="noopener">',
+            '<a class="pf-card" href="' + link + '" target="_blank" rel="noopener" onclick="if(window.openLightbox){event.preventDefault();openLightbox(window._pfCurrentPosts||[],' + pIdx + ');}">',
             '<div class="pf-thumb">',
             img ? '<img class="pf-img" src="' + img + '" alt="' + cap.slice(0, 40) + '" loading="lazy" />' : '<div class="pf-img" style="background:rgba(255,45,45,.07)"></div>',
             '<div class="pf-overlay">',
@@ -2939,6 +3081,90 @@
       </div>
     </div>
   </section>
+
+  <!-- ══ TESTIMONIALS SECTION ═══════════════════════════════ -->
+  <style>
+    .testimonials-section{position:relative;z-index:1;padding:100px 0;overflow:hidden}
+    .testimonials-inner{max-width:900px;margin:0 auto;padding:0 6%}
+    .testimonial-carousel{position:relative;min-height:260px}
+    .testimonial-card{position:absolute;inset:0;opacity:0;transform:translateX(40px);transition:opacity .6s ease,transform .6s ease;display:flex;flex-direction:column;align-items:center;text-align:center;padding:40px 30px;border-radius:24px;background:rgba(255,255,255,.04);border:1px solid rgba(255,45,45,.15);backdrop-filter:blur(20px)}
+    .testimonial-card.active{opacity:1;transform:translateX(0);z-index:2}
+    .testimonial-card.prev{opacity:0;transform:translateX(-40px)}
+    .testimonial-stars{color:#FF2D2D;font-size:18px;letter-spacing:4px;margin-bottom:16px;text-shadow:0 0 12px rgba(255,45,45,.5)}
+    .testimonial-text{font-family:var(--font-body);font-size:17px;color:rgba(255,255,255,.85);line-height:1.8;max-width:600px;margin-bottom:24px;font-style:italic}
+    .testimonial-author{font-family:var(--font-heading);font-size:15px;font-weight:700;color:#fff}
+    .testimonial-role{font-size:12px;color:var(--muted);margin-top:4px;letter-spacing:1px}
+    .testimonial-service{display:inline-block;padding:4px 14px;border-radius:20px;font-size:10px;font-weight:600;letter-spacing:1px;text-transform:uppercase;margin-top:10px;background:rgba(255,45,45,.12);color:#FF6060;border:1px solid rgba(255,45,45,.25)}
+    .testimonial-dots{display:flex;justify-content:center;gap:10px;margin-top:30px}
+    .testimonial-dot{width:10px;height:10px;border-radius:50%;background:rgba(255,255,255,.15);border:1px solid rgba(255,45,45,.3);cursor:pointer;transition:all .3s}
+    .testimonial-dot.active{background:#FF2D2D;box-shadow:0 0 12px rgba(255,45,45,.6);transform:scale(1.2)}
+    .testimonial-nav{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.06);border:1px solid rgba(255,45,45,.2);border-radius:50%;width:44px;height:44px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:var(--muted);font-size:18px;transition:all .25s;z-index:5}
+    .testimonial-nav:hover{background:rgba(255,45,45,.15);border-color:#FF2D2D;color:#fff}
+    .testimonial-nav.t-prev{left:-22px}
+    .testimonial-nav.t-next{right:-22px}
+    @media(max-width:768px){.testimonial-nav{display:none}.testimonial-card{padding:28px 20px}.testimonial-text{font-size:15px}}
+  </style>
+  <section class="testimonials-section sr3">
+    <div class="testimonials-inner">
+      <div class="section-header">
+        <span class="section-eyebrow">Testimonials</span>
+        <h2 class="section-title">What Clients Say</h2>
+        <p class="section-sub">Real feedback from people who trusted us with their moments.</p>
+      </div>
+      <div class="glow-divider"></div>
+      <div class="testimonial-carousel" id="testimonial-carousel">
+        <button class="testimonial-nav t-prev" onclick="testimonialNav(-1)">‹</button>
+        <button class="testimonial-nav t-next" onclick="testimonialNav(1)">›</button>
+        <div class="testimonial-card active" data-idx="0">
+          <div class="testimonial-stars">★★★★★</div>
+          <p class="testimonial-text">"Absolutely blown away by the quality! The photos captured every emotion perfectly. CAMLYFF has an eye for detail that's rare to find."</p>
+          <div class="testimonial-author">Arjun Sharma</div>
+          <div class="testimonial-role">Wedding Client</div>
+          <span class="testimonial-service">📷 Photography</span>
+        </div>
+        <div class="testimonial-card" data-idx="1">
+          <div class="testimonial-stars">★★★★★</div>
+          <p class="testimonial-text">"Rented a Sony A7III for my travel vlog — the gear was in perfect condition and the process was super smooth. Will definitely come back!"</p>
+          <div class="testimonial-author">Priya Krishnan</div>
+          <div class="testimonial-role">Content Creator</div>
+          <span class="testimonial-service">🎥 Camera Rental</span>
+        </div>
+        <div class="testimonial-card" data-idx="2">
+          <div class="testimonial-stars">★★★★★</div>
+          <p class="testimonial-text">"The street photography session was an incredible experience. Every frame tells a story — true visual storytelling at its finest."</p>
+          <div class="testimonial-author">Dev Mehta</div>
+          <div class="testimonial-role">Brand Collaboration</div>
+          <span class="testimonial-service">🎬 Content Package</span>
+        </div>
+        <div class="testimonial-card" data-idx="3">
+          <div class="testimonial-stars">★★★★★</div>
+          <p class="testimonial-text">"Professional, punctual, and passionate — exactly what you want from a photographer. The edits were stunning and delivered ahead of schedule."</p>
+          <div class="testimonial-author">Riya Talwar</div>
+          <div class="testimonial-role">Portrait Client</div>
+          <span class="testimonial-service">📷 Portrait Session</span>
+        </div>
+      </div>
+      <div class="testimonial-dots" id="testimonial-dots">
+        <div class="testimonial-dot active" onclick="goTestimonial(0)"></div>
+        <div class="testimonial-dot" onclick="goTestimonial(1)"></div>
+        <div class="testimonial-dot" onclick="goTestimonial(2)"></div>
+        <div class="testimonial-dot" onclick="goTestimonial(3)"></div>
+      </div>
+    </div>
+  </section>
+  <script>
+    (function(){
+      var idx=0,total=4,timer=null;
+      function show(n){var cards=document.querySelectorAll('.testimonial-card');var dots=document.querySelectorAll('.testimonial-dot');cards.forEach(function(c,i){c.className='testimonial-card'+(i===n?' active':i<n?' prev':'');});dots.forEach(function(d,i){d.className='testimonial-dot'+(i===n?' active':'');});idx=n;}
+      window.goTestimonial=function(n){show(n);resetTimer();};
+      window.testimonialNav=function(dir){show((idx+dir+total)%total);resetTimer();};
+      function auto(){show((idx+1)%total);}
+      function resetTimer(){clearInterval(timer);timer=setInterval(auto,5000);}
+      resetTimer();
+      var carousel=document.getElementById('testimonial-carousel'),sx=0;
+      if(carousel){carousel.addEventListener('touchstart',function(e){sx=e.touches[0].clientX;},{passive:true});carousel.addEventListener('touchend',function(e){var dx=e.changedTouches[0].clientX-sx;if(Math.abs(dx)>50){testimonialNav(dx<0?1:-1);}},{passive:true});}
+    })();
+  </script>
 
   <!-- ══ GEAR / AFFILIATE SECTION ══════════════════════════ -->
   <section id="gear" class="gear-section sr3">
@@ -4991,6 +5217,37 @@
     }
     function saveData() {
       try { localStorage.setItem('camlyff_data', JSON.stringify(data)); } catch (e) { }
+      // Sync to Firestore
+      if (typeof db !== 'undefined') {
+        db.collection('app').doc('dashboard').set(JSON.parse(JSON.stringify(data)))
+          .then(function() { console.log('[Firestore] Synced'); })
+          .catch(function(e) { console.warn('[Firestore] Save failed:', e); });
+      }
+    }
+    // Load from Firestore on boot (overrides localStorage if available)
+    function loadFromFirestore() {
+      if (typeof db === 'undefined') return;
+      db.collection('app').doc('dashboard').get()
+        .then(function(doc) {
+          if (doc.exists) {
+            var cloud = doc.data();
+            // Merge: cloud data takes priority
+            data.rentals = cloud.rentals || data.rentals;
+            data.photos = cloud.photos || data.photos;
+            data.income = cloud.income || data.income;
+            data.calendar = cloud.calendar || data.calendar;
+            data.inbox = cloud.inbox || data.inbox;
+            data.nextId = cloud.nextId || data.nextId;
+            localStorage.setItem('camlyff_data', JSON.stringify(data));
+            renderAll();
+            console.log('[Firestore] Loaded cloud data');
+          } else {
+            // First time: push local data to cloud
+            saveData();
+            console.log('[Firestore] Initialized cloud with local data');
+          }
+        })
+        .catch(function(e) { console.warn('[Firestore] Load failed:', e); });
     }
     function nextId() { data.nextId = (data.nextId || 10) + 1; return data.nextId; }
 
@@ -5247,6 +5504,7 @@
     }
 
     renderAll();
+    loadFromFirestore();
 
     /* ============================================================
        INSTAGRAM SYNC — powered by Behold.so
@@ -6301,6 +6559,117 @@
         }, { passive: true });
       }
 
+    })();
+  </script>
+  <script>
+    /* ── Mobile Hamburger Menu ── */
+    function toggleMobileMenu() {
+      var ham = document.getElementById('hamburger');
+      var menu = document.getElementById('mobile-menu');
+      ham.classList.toggle('active');
+      menu.classList.toggle('open');
+      document.body.style.overflow = menu.classList.contains('open') ? 'hidden' : '';
+    }
+    function closeMobileMenu() {
+      var ham = document.getElementById('hamburger');
+      var menu = document.getElementById('mobile-menu');
+      if (menu.classList.contains('open')) {
+        ham.classList.remove('active');
+        menu.classList.remove('open');
+        document.body.style.overflow = '';
+      }
+    }
+    document.addEventListener('keydown', function(e) {
+      if (e.key === 'Escape') closeMobileMenu();
+    });
+  </script>
+  <!-- ══ PHOTO LIGHTBOX ════════════════════════════════════ -->
+  <style>
+    .lightbox{position:fixed;inset:0;z-index:3000;background:rgba(0,0,0,.92);backdrop-filter:blur(20px);display:flex;align-items:center;justify-content:center;flex-direction:column;opacity:0;pointer-events:none;transition:opacity .35s ease}
+    .lightbox.open{opacity:1;pointer-events:auto}
+    .lightbox-close{position:absolute;top:20px;right:24px;background:none;border:none;color:rgba(255,255,255,.6);font-size:32px;cursor:pointer;z-index:10;transition:color .2s,transform .2s}
+    .lightbox-close:hover{color:#FF2D2D;transform:rotate(90deg)}
+    .lightbox-img-wrap{max-width:85vw;max-height:75vh;position:relative;transform:scale(.92);transition:transform .4s cubic-bezier(.22,1,.36,1)}
+    .lightbox.open .lightbox-img-wrap{transform:scale(1)}
+    .lightbox-img{max-width:85vw;max-height:75vh;object-fit:contain;border-radius:12px;box-shadow:0 20px 60px rgba(0,0,0,.6),0 0 40px rgba(255,45,45,.08)}
+    .lightbox-info{text-align:center;margin-top:16px;max-width:500px;padding:0 20px}
+    .lightbox-caption{font-size:14px;color:rgba(255,255,255,.75);line-height:1.6;margin-bottom:8px}
+    .lightbox-meta{font-size:12px;color:var(--muted);display:flex;gap:16px;justify-content:center;flex-wrap:wrap}
+    .lightbox-meta a{color:#FF6060;text-decoration:none}
+    .lightbox-meta a:hover{text-decoration:underline}
+    .lightbox-arrow{position:absolute;top:50%;transform:translateY(-50%);background:rgba(255,255,255,.08);border:1px solid rgba(255,255,255,.15);border-radius:50%;width:50px;height:50px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:rgba(255,255,255,.7);font-size:22px;transition:all .25s;z-index:5}
+    .lightbox-arrow:hover{background:rgba(255,45,45,.2);border-color:#FF2D2D;color:#fff}
+    .lightbox-arrow.lb-prev{left:20px}
+    .lightbox-arrow.lb-next{right:20px}
+    @media(max-width:600px){.lightbox-arrow{width:40px;height:40px;font-size:18px}.lightbox-arrow.lb-prev{left:8px}.lightbox-arrow.lb-next{right:8px}}
+  </style>
+  <div class="lightbox" id="lightbox">
+    <button class="lightbox-close" onclick="closeLightbox()" aria-label="Close">✕</button>
+    <button class="lightbox-arrow lb-prev" onclick="lightboxNav(-1)">‹</button>
+    <button class="lightbox-arrow lb-next" onclick="lightboxNav(1)">›</button>
+    <div class="lightbox-img-wrap">
+      <img class="lightbox-img" id="lb-img" src="" alt="" />
+    </div>
+    <div class="lightbox-info">
+      <div class="lightbox-caption" id="lb-caption"></div>
+      <div class="lightbox-meta" id="lb-meta"></div>
+    </div>
+  </div>
+  <script>
+    /* ── Photo Lightbox ── */
+    (function(){
+      var lbPosts=[],lbIdx=0;
+      window.openLightbox=function(posts,idx){lbPosts=posts;lbIdx=idx;showLb();document.getElementById('lightbox').classList.add('open');document.body.style.overflow='hidden';};
+      window.closeLightbox=function(){document.getElementById('lightbox').classList.remove('open');document.body.style.overflow='';};
+      window.lightboxNav=function(dir){lbIdx=(lbIdx+dir+lbPosts.length)%lbPosts.length;showLb();};
+      function showLb(){
+        var p=lbPosts[lbIdx];if(!p)return;
+        var img=document.getElementById('lb-img'),cap=document.getElementById('lb-caption'),meta=document.getElementById('lb-meta');
+        var src=(p.sizes&&p.sizes.large)?p.sizes.large.mediaUrl:(p.sizes&&p.sizes.medium?p.sizes.medium.mediaUrl:(p.mediaUrl||''));
+        img.src=src;img.alt=(p.caption||'').slice(0,60);
+        cap.textContent=(p.caption||'').replace(/#\w+/g,'').trim().slice(0,200)||'@camlyff';
+        var date=p.timestamp?new Date(p.timestamp).toLocaleDateString('en-IN',{day:'numeric',month:'long',year:'numeric'}):'';
+        var likes=p.likesCount!=null?'❤️ '+p.likesCount:'';
+        var link=p.permalink||'https://www.instagram.com/camlyff';
+        meta.innerHTML=[date,likes,'<a href="'+link+'" target="_blank" rel="noopener">View on Instagram ↗</a>'].filter(Boolean).join(' &nbsp;·&nbsp; ');
+      }
+      document.addEventListener('keydown',function(e){
+        if(!document.getElementById('lightbox').classList.contains('open'))return;
+        if(e.key==='Escape')closeLightbox();if(e.key==='ArrowRight')lightboxNav(1);if(e.key==='ArrowLeft')lightboxNav(-1);
+      });
+      var lb=document.getElementById('lightbox'),tsx=0;
+      if(lb){lb.addEventListener('touchstart',function(e){tsx=e.touches[0].clientX;},{passive:true});lb.addEventListener('touchend',function(e){var dx=e.changedTouches[0].clientX-tsx;if(Math.abs(dx)>50)lightboxNav(dx<0?1:-1);},{passive:true});}
+    })();
+
+    /* ── Stat Counter Animation ── */
+    (function(){
+      var animated=false;
+      function animateCounters(){
+        if(animated)return;animated=true;
+        document.querySelectorAll('.stat-value').forEach(function(el){
+          var text=el.textContent.trim();
+          var match=text.match(/([₹]?)([\d.]+)(.*)/);if(!match)return;
+          var prefix=match[1],target=parseFloat(match[2]),suffix=match[3];
+          var start=0,dur=1200,startTime=null;
+          function step(ts){
+            if(!startTime)startTime=ts;
+            var p=Math.min((ts-startTime)/dur,1);
+            var ease=1-Math.pow(1-p,3);
+            var val=start+(target-start)*ease;
+            el.textContent=prefix+(target%1===0?Math.round(val):val.toFixed(1))+suffix;
+            if(p<1)requestAnimationFrame(step);
+          }
+          el.textContent=prefix+'0'+suffix;
+          requestAnimationFrame(step);
+        });
+      }
+      /* Trigger when Work panel becomes visible */
+      var obs=new MutationObserver(function(){
+        var wp=document.getElementById('panel-work');
+        if(wp&&wp.classList.contains('visible'))animateCounters();
+      });
+      var wp=document.getElementById('panel-work');
+      if(wp)obs.observe(wp,{attributes:true,attributeFilter:['class']});
     })();
   </script>
 </body>
