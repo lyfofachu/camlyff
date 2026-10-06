@@ -83,7 +83,7 @@
       </div>
 
       <!-- Metrics -->
-      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+      <div class="dash-metrics-grid">
         <div style="background:#131317;padding:20px;border-radius:14px;border:1px solid rgba(250,247,242,0.08);">
           <div style="font-size:11px;color:#A8A196;text-transform:uppercase;letter-spacing:1px;">Total Bookings</div>
           <div id="metricTotalBookings" style="font-size:28px;font-weight:700;color:#FAF7F2;margin-top:6px;">0</div>
@@ -105,6 +105,7 @@
           <input type="text" id="dashSearchInput" class="form-input" placeholder="Search by name, phone, gear..." oninput="filterAdminBookings()" style="max-width:300px;padding:8px 14px;font-size:12px;" />
         </div>
 
+        <!-- Desktop Table View -->
         <div class="table-responsive">
           <table class="data-table">
             <thead>
@@ -125,6 +126,9 @@
             </tbody>
           </table>
         </div>
+
+        <!-- Mobile Cards View (Phones <= 768px) -->
+        <div id="dashBookingsMobileCards" class="mobile-bookings-container"></div>
       </div>
 
       <!-- Email Templates Section -->

@@ -82,7 +82,8 @@
   window.toggleMobileNav = function () {
     const nav = document.getElementById('mobileNavOverlay');
     if (nav) {
-      nav.classList.toggle('active');
+      const isOpen = nav.classList.toggle('active');
+      document.body.style.overflow = isOpen ? 'hidden' : '';
     }
   };
 
@@ -473,36 +474,90 @@
 
   function renderAdminBookingsTable(list) {
     const tbody = document.getElementById('dashBookingsTableBody');
-    if (!tbody) return;
+    const mobileCardsWrap = document.getElementById('dashBookingsMobileCards');
 
     if (!list.length) {
-      tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:28px;color:#A8A196;">No bookings found in database.</td></tr>';
+      if (tbody) tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;padding:28px;color:#A8A196;">No bookings found in database.</td></tr>';
+      if (mobileCardsWrap) mobileCardsWrap.innerHTML = '<div style="text-align:center;padding:28px;color:#A8A196;">No bookings found.</div>';
       return;
     }
 
-    tbody.innerHTML = list.map(b => {
-      const statusClass = `status-${b.status || 'pending'}`;
-      const dt = b.created_at ? new Date(b.created_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric', hour: '2-digit', minute: '2-digit' }) : '-';
+    // 1. Desktop Table
+    if (tbody) {
+      tbody.innerHTML = list.map(b => {
+        const statusClass = `status-${b.status || 'pending'}`;
+        return `
+          <tr>
+            <td><strong>${b.name || 'Client'}</strong><br><small style="color:#A8A196">${b.email || ''}</small></td>
+            <td>${b.phone || '-'}</td>
+            <td>${b.camera || b.service || '-'}</td>
+            <td>${b.date || '-'}<br><small style="color:#A8A196">${b.duration || ''}</small></td>
+            <td><strong>₹${(b.price || 0).toLocaleString()}</strong></td>
+            <td><span class="status-badge ${statusClass}">${b.status || 'pending'}</span></td>
+            <td>
+              <div style="display:flex;gap:6px">
+                ${b.status !== 'confirmed' ? `<button onclick="updateBookingState(${b.id}, 'confirmed')" style="background:#22C55E;color:#000;border-radius:4px;padding:4px 8px;font-size:11px;font-weight:700" title="Confirm">✓</button>` : ''}
+                ${b.status !== 'completed' ? `<button onclick="updateBookingState(${b.id}, 'completed')" style="background:#C084FC;color:#000;border-radius:4px;padding:4px 8px;font-size:11px;font-weight:700" title="Complete">🏁</button>` : ''}
+                ${b.status !== 'cancelled' ? `<button onclick="updateBookingState(${b.id}, 'cancelled')" style="background:#EF4444;color:#FFF;border-radius:4px;padding:4px 8px;font-size:11px;font-weight:700" title="Cancel">✕</button>` : ''}
+                <button onclick="deleteBookingRecord(${b.id})" style="background:#2A2A33;color:#FFF;border-radius:4px;padding:4px 8px;font-size:11px" title="Delete">🗑</button>
+              </div>
+            </td>
+          </tr>
+        `;
+      }).join('');
+    }
 
-      return `
-        <tr>
-          <td><strong>${b.name || 'Client'}</strong><br><small style="color:#A8A196">${b.email || ''}</small></td>
-          <td>${b.phone || '-'}</td>
-          <td>${b.camera || b.service || '-'}</td>
-          <td>${b.date || '-'}<br><small style="color:#A8A196">${b.duration || ''}</small></td>
-          <td><strong>₹${(b.price || 0).toLocaleString()}</strong></td>
-          <td><span class="status-badge ${statusClass}">${b.status || 'pending'}</span></td>
-          <td>
-            <div style="display:flex;gap:6px">
-              ${b.status !== 'confirmed' ? `<button onclick="updateBookingState(${b.id}, 'confirmed')" style="background:#22C55E;color:#000;border-radius:4px;padding:3px 8px;font-size:10px;font-weight:700">✓</button>` : ''}
-              ${b.status !== 'completed' ? `<button onclick="updateBookingState(${b.id}, 'completed')" style="background:#C084FC;color:#000;border-radius:4px;padding:3px 8px;font-size:10px;font-weight:700">🏁</button>` : ''}
-              ${b.status !== 'cancelled' ? `<button onclick="updateBookingState(${b.id}, 'cancelled')" style="background:#EF4444;color:#FFF;border-radius:4px;padding:3px 8px;font-size:10px;font-weight:700">✕</button>` : ''}
-              <button onclick="deleteBookingRecord(${b.id})" style="background:#2A2A33;color:#FFF;border-radius:4px;padding:3px 8px;font-size:10px">🗑</button>
+    // 2. Mobile Cards (Phones <= 768px)
+    if (mobileCardsWrap) {
+      mobileCardsWrap.innerHTML = list.map(b => {
+        const statusClass = `status-${b.status || 'pending'}`;
+        const cleanPhone = (b.phone || '').replace(/[^0-9]/g, '');
+        return `
+          <div class="mobile-booking-card">
+            <div class="mob-card-head">
+              <div>
+                <div class="mob-client-name">${b.name || 'Client'}</div>
+                <div class="mob-client-email">${b.email || 'No email provided'}</div>
+              </div>
+              <span class="status-badge ${statusClass}">${b.status || 'pending'}</span>
             </div>
-          </td>
-        </tr>
-      `;
-    }).join('');
+
+            <div class="mob-card-body">
+              <div>
+                <div class="mob-info-label">Equipment</div>
+                <div class="mob-info-val" style="color:#C8A97E">${b.camera || b.service || '-'}</div>
+              </div>
+              <div>
+                <div class="mob-info-label">Rate</div>
+                <div class="mob-info-val" style="color:#22C55E">₹${(b.price || 0).toLocaleString()}</div>
+              </div>
+              <div>
+                <div class="mob-info-label">Date</div>
+                <div class="mob-info-val">${b.date || '-'}</div>
+              </div>
+              <div>
+                <div class="mob-info-label">Duration</div>
+                <div class="mob-info-val">${b.duration || '-'}</div>
+              </div>
+            </div>
+
+            ${b.phone ? `
+            <div class="mob-quick-contacts">
+              <a href="tel:${cleanPhone}" class="mob-contact-btn">📞 Call</a>
+              <a href="https://wa.me/${cleanPhone}" target="_blank" rel="noopener" class="mob-contact-btn" style="color:#22C55E;border-color:rgba(34,197,94,0.3)">💬 WhatsApp</a>
+            </div>
+            ` : ''}
+
+            <div class="mob-card-actions">
+              ${b.status !== 'confirmed' ? `<button onclick="updateBookingState(${b.id}, 'confirmed')" class="mob-action-btn" style="background:#22C55E;color:#0B0B0D">✓ Confirm</button>` : ''}
+              ${b.status !== 'completed' ? `<button onclick="updateBookingState(${b.id}, 'completed')" class="mob-action-btn" style="background:#C084FC;color:#0B0B0D">🏁 Done</button>` : ''}
+              ${b.status !== 'cancelled' ? `<button onclick="updateBookingState(${b.id}, 'cancelled')" class="mob-action-btn" style="background:rgba(239,68,68,0.2);color:#EF4444;border:1px solid rgba(239,68,68,0.4)">✕ Cancel</button>` : ''}
+              <button onclick="deleteBookingRecord(${b.id})" class="mob-action-btn" style="background:#25252F;color:#A8A196">🗑 Delete</button>
+            </div>
+          </div>
+        `;
+      }).join('');
+    }
   }
 
   function updateDashMetrics(list) {

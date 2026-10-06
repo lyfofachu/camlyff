@@ -71,17 +71,17 @@
   </header>
 
   <!-- Mobile Navigation Drawer -->
-  <div id="mobileNavOverlay" style="position:fixed;inset:0;background:rgba(11,11,13,0.97);z-index:850;display:none;flex-direction:column;align-items:center;justify-content:center;gap:24px;">
-    <button onclick="toggleMobileNav()" style="position:absolute;top:24px;right:24px;color:#FAF7F2;font-size:32px;">&times;</button>
-    <a href="#gear" onclick="toggleMobileNav()" style="font-size:20px;letter-spacing:2px;text-transform:uppercase;color:#FAF7F2;">Rental Gear</a>
-    <a href="#services" onclick="toggleMobileNav()" style="font-size:20px;letter-spacing:2px;text-transform:uppercase;color:#FAF7F2;">Services</a>
-    <a href="#booking" onclick="toggleMobileNav()" style="font-size:20px;letter-spacing:2px;text-transform:uppercase;color:#FAF7F2;">Book Gear</a>
-    <a href="#contact" onclick="toggleMobileNav()" style="font-size:20px;letter-spacing:2px;text-transform:uppercase;color:#FAF7F2;">Contact</a>
-    <div style="width:50px;height:1px;background:rgba(250,247,242,0.2);margin:10px 0;"></div>
-    <button onclick="toggleMobileNav(); openDashboardPortal();" class="btn-admin" style="font-size:14px;padding:10px 24px;">
-      🔒 Open Admin Dashboard
+  <div id="mobileNavOverlay" class="mobile-nav-overlay">
+    <button class="mobile-close-btn" aria-label="Close Navigation" onclick="toggleMobileNav()">&times;</button>
+    <a href="#gear" onclick="toggleMobileNav()">Rental Gear</a>
+    <a href="#services" onclick="toggleMobileNav()">Services</a>
+    <a href="#booking" onclick="toggleMobileNav()">Book Gear</a>
+    <a href="#contact" onclick="toggleMobileNav()">Contact</a>
+    <div style="width:60px;height:1px;background:rgba(250,247,242,0.15);margin:6px 0;"></div>
+    <button onclick="toggleMobileNav(); openDashboardPortal();" class="btn-admin" style="font-size:13px;padding:10px 24px;min-height:44px;">
+      ⚡ Admin Portal
     </button>
-    <a href="https://wa.me/919392526227" target="_blank" rel="noopener" class="btn-primary" style="margin-top:10px;">
+    <a href="https://wa.me/919392526227" target="_blank" rel="noopener" class="btn-primary" style="margin-top:6px;min-height:44px;padding:10px 24px;">
       💬 Chat on WhatsApp
     </a>
   </div>
@@ -472,8 +472,8 @@
             </div>
           </div>
 
-          <!-- Quick Metrics -->
-          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:14px;">
+          <!-- Quick Metrics (Responsive Mobile Grid) -->
+          <div class="dash-metrics-grid">
             <div style="background:#1B1B22;padding:16px;border-radius:12px;border:1px solid var(--border-subtle);">
               <div style="font-size:11px;color:#A8A196;text-transform:uppercase;">Total Bookings</div>
               <div id="metricTotalBookings" style="font-size:24px;font-weight:700;color:#FAF7F2;margin-top:4px;">0</div>
@@ -495,6 +495,7 @@
               <span style="font-size:11px;color:#A8A196;">Live PostgreSQL Synchronization</span>
             </div>
 
+            <!-- Desktop Table View -->
             <div class="table-responsive">
               <table class="data-table">
                 <thead>
@@ -515,6 +516,9 @@
                 </tbody>
               </table>
             </div>
+
+            <!-- Mobile Cards View (Phones <= 768px) -->
+            <div id="dashBookingsMobileCards" class="mobile-bookings-container"></div>
           </div>
 
           <!-- TAB 2: EMAIL TEMPLATES PANE -->
