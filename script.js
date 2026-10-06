@@ -346,8 +346,16 @@
     if (tabName === 'templates') loadAdminTemplates();
   };
 
-  // Check Supabase Auth
+  // Check Admin Session
   async function checkAdminSession() {
+    // Check local session key first
+    if (sessionStorage.getItem('clf_admin_session') === '1') {
+      adminSessionUser = { email: sessionStorage.getItem('clf_admin_email') || 'camlyff005@gmail.com' };
+      renderDashAuthUI(true);
+      loadAdminBookings();
+      return;
+    }
+
     if (!supaClient) {
       renderDashAuthUI(false);
       return;
@@ -371,14 +379,14 @@
     if (isLoggedIn) {
       if (gate) gate.style.display = 'none';
       if (panel) panel.style.display = 'flex';
-      if (adminEmailBadge) adminEmailBadge.textContent = adminSessionUser?.email || 'admin@camlyff.com';
+      if (adminEmailBadge) adminEmailBadge.textContent = adminSessionUser?.email || 'camlyff005@gmail.com';
     } else {
       if (gate) gate.style.display = 'block';
       if (panel) panel.style.display = 'none';
     }
   }
 
-  // Admin Login Handler
+  // Admin Login Handler (Master Credentials + Supabase Auth)
   window.handleAdminLogin = async function (e) {
     if (e) e.preventDefault();
     const email = (document.getElementById('adminLoginEmail')?.value || '').trim();
@@ -389,30 +397,47 @@
     if (errBox) errBox.textContent = '';
     if (btn) { btn.disabled = true; btn.textContent = 'Authenticating...'; }
 
-    if (!supaClient) {
-      if (errBox) errBox.textContent = 'Supabase client not initialized.';
+    // 1. MASTER ADMIN BYPASS (Instant Access)
+    const normalizedEmail = email.toLowerCase();
+    if (
+      (normalizedEmail === 'camlyff005@gmail.com' || normalizedEmail === 'admin@camlyff.com' || normalizedEmail === 'admin') &&
+      (pass === 'camlyff2025' || pass === 'camlyff@2025')
+    ) {
+      adminSessionUser = { email: normalizedEmail === 'admin' ? 'camlyff005@gmail.com' : normalizedEmail };
+      sessionStorage.setItem('clf_admin_session', '1');
+      sessionStorage.setItem('clf_admin_email', adminSessionUser.email);
+      renderDashAuthUI(true);
+      showToast('Admin authenticated successfully');
+      loadAdminBookings();
       if (btn) { btn.disabled = false; btn.textContent = 'Sign In'; }
       return false;
     }
 
-    const res = await supaClient.auth.signInWithPassword({ email: email, password: pass });
-    if (res.error) {
-      if (errBox) errBox.textContent = res.error.message || 'Invalid credentials.';
-      if (btn) { btn.disabled = false; btn.textContent = 'Sign In'; }
-      return false;
+    // 2. SUPABASE AUTH CHECK
+    if (supaClient) {
+      const res = await supaClient.auth.signInWithPassword({ email: email, password: pass });
+      if (!res.error && res.data.user) {
+        adminSessionUser = res.data.user;
+        sessionStorage.setItem('clf_admin_session', '1');
+        sessionStorage.setItem('clf_admin_email', adminSessionUser.email);
+        renderDashAuthUI(true);
+        showToast('Admin authenticated successfully via Supabase');
+        loadAdminBookings();
+        if (btn) { btn.disabled = false; btn.textContent = 'Sign In'; }
+        return false;
+      }
     }
 
-    adminSessionUser = res.data.user;
-    renderDashAuthUI(true);
-    showToast('Admin authenticated successfully');
-    loadAdminBookings();
-
+    // Fallback error
+    if (errBox) errBox.textContent = 'Invalid credentials. Use camlyff005@gmail.com / camlyff2025';
     if (btn) { btn.disabled = false; btn.textContent = 'Sign In'; }
     return false;
   };
 
   // Admin Logout
   window.handleAdminLogout = async function () {
+    sessionStorage.removeItem('clf_admin_session');
+    sessionStorage.removeItem('clf_admin_email');
     if (supaClient) {
       await supaClient.auth.signOut();
     }
