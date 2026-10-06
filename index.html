@@ -110,6 +110,7 @@
       box-sizing: border-box;
       margin: 0;
       padding: 0;
+      touch-action: manipulation;
     }
 
     :root {
@@ -143,6 +144,8 @@
 
     html {
       scroll-behavior: smooth;
+      -webkit-text-size-adjust: 100%;
+      -ms-text-size-adjust: 100%;
     }
 
     body {
@@ -2432,10 +2435,29 @@
       color: #FF4D4D;
     }
 
+    /* Dashboard button removed — admin access via camlyff.html only */
+    .nav-dash-btn { display: none !important; }
+
     @media (max-width: 768px) {
       .hamburger { display: flex; }
       .nav-links { display: none !important; }
-      .nav-dash-btn { display: none; }
+    }
+
+    /* Mobile: prevent iOS auto-zoom on input focus */
+    @media (max-width: 768px) {
+      input, select, textarea, button {
+        font-size: 16px !important;
+      }
+    }
+
+    /* Lazy loading image transitions */
+    img[loading="lazy"] {
+      opacity: 0;
+      transition: opacity 0.4s ease;
+    }
+    img[loading="lazy"].loaded,
+    img[loading="lazy"][complete] {
+      opacity: 1;
     }
   </style>
 </head>
@@ -2504,7 +2526,7 @@
       <li><a href="#work-feed">About</a></li>
       <li><a href="#work-feed">Contact</a></li>
     </ul>
-    <button class="nav-dash-btn" onclick="openDashboard()">Dashboard</button>
+    <!-- Dashboard moved to camlyff.html (admin-only access) -->
     <!-- Mobile Hamburger -->
     <button class="hamburger" id="hamburger" aria-label="Menu" onclick="toggleMobileMenu()">
       <span></span><span></span><span></span>
@@ -2519,7 +2541,7 @@
       <a href="#gear" class="mobile-menu-link" onclick="closeMobileMenu()" style="--i:2">Our Kit</a>
       <div class="mobile-menu-divider"></div>
       <button class="mobile-menu-link" onclick="closeMobileMenu();openBookingModal();" style="--i:3">📷 Book a Shoot</button>
-      <button class="mobile-menu-link" onclick="closeMobileMenu();openDashboard();" style="--i:4">Dashboard</button>
+      <!-- Dashboard access: camlyff.html -->
       <div class="mobile-menu-social">
         <a href="https://instagram.com/camlyff" target="_blank" rel="noopener">📷 @camlyff</a>
         <a href="https://wa.me/919392526227" target="_blank" rel="noopener">📱 WhatsApp</a>
@@ -7142,6 +7164,22 @@
       if(wp)obs.observe(wp,{attributes:true,attributeFilter:['class']});
     })();
   </script>
+<!-- Lazy loading observer -->
+<script>
+(function(){
+  if(!('IntersectionObserver' in window))return;
+  var obs=new IntersectionObserver(function(entries){
+    entries.forEach(function(e){
+      if(e.isIntersecting){
+        var img=e.target;
+        if(img.dataset.src){img.src=img.dataset.src;delete img.dataset.src;}
+        img.classList.add('loaded');
+        obs.unobserve(img);
+      }
+    });
+  },{rootMargin:'200px'});
+  document.querySelectorAll('img[loading="lazy"]').forEach(function(img){obs.observe(img);});
+})();
+</script>
 </body>
-
 </html>
