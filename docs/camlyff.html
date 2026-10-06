@@ -1,859 +1,160 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-<title>CAMLYFF — Admin Dashboard</title>
-<meta name="robots" content="noindex, nofollow" />
-<link rel="icon" type="image/png" href="images/logo.png" />
-<!-- Supabase SDK -->
-<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
-<style>
-  /* ── RESET ── */
-  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #f5f5f3; color: #1a1a18; }
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>CAMLYFF — Dedicated Admin Dashboard</title>
+  <meta name="robots" content="noindex, nofollow" />
+  <link rel="icon" type="image/png" href="images/logo.png" />
 
-  /* ── LOGIN GATE ── */
-  #login-gate {
-    position: fixed; inset: 0; z-index: 9999;
-    background: linear-gradient(135deg, #0d0d0d 0%, #1a1a2e 100%);
-    display: flex; align-items: center; justify-content: center;
-    font-family: inherit;
-  }
-  #login-gate.hidden { display: none; }
-  .login-card {
-    background: #1e1e2e; border: 1px solid rgba(255,255,255,0.06);
-    border-radius: 20px; padding: 44px 40px; width: 380px; max-width: 92vw;
-    box-shadow: 0 32px 80px rgba(0,0,0,0.5); text-align: center;
-  }
-  .login-logo { font-size: 32px; font-weight: 700; color: #fff; letter-spacing: 2px; margin-bottom: 6px; }
-  .login-sub { font-size: 13px; color: #666; margin-bottom: 28px; }
-  .login-field {
-    width: 100%; padding: 13px 16px; font-size: 14px;
-    border: 1px solid rgba(255,255,255,0.1); border-radius: 12px;
-    background: rgba(255,255,255,0.05); color: #fff;
-    outline: none; transition: border-color 0.2s; margin-bottom: 12px;
-    font-family: inherit;
-  }
-  .login-field::placeholder { color: #555; }
-  .login-field:focus { border-color: rgba(29,158,117,0.6); box-shadow: 0 0 0 3px rgba(29,158,117,0.12); }
-  .login-btn {
-    width: 100%; padding: 13px; font-size: 14px; font-weight: 600;
-    border: none; border-radius: 12px; background: #1D9E75; color: #fff;
-    cursor: pointer; transition: background 0.15s, transform 0.1s;
-    font-family: inherit; margin-top: 4px;
-  }
-  .login-btn:hover { background: #17855f; }
-  .login-btn:active { transform: scale(0.98); }
-  .login-btn:disabled { opacity: 0.6; cursor: not-allowed; }
-  .login-error { margin-top: 14px; font-size: 12px; color: #e05c5c; min-height: 18px; }
-  .login-forgot {
-    display: inline-block; margin-top: 16px; font-size: 12px;
-    color: #666; cursor: pointer; text-decoration: underline;
-    transition: color 0.2s;
-  }
-  .login-forgot:hover { color: #1D9E75; }
-  .login-secure { display: flex; align-items: center; justify-content: center; gap: 6px; font-size: 10px; color: #444; margin-top: 20px; letter-spacing: 0.5px; }
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Syne:wght@600;700;800&display=swap" rel="stylesheet" />
 
-  /* ── APP LAYOUT ── */
-  .app { display: flex; height: 100vh; min-height: 600px; }
-  .sidebar {
-    width: 220px; min-width: 220px; background: #ffffff;
-    border-right: 1px solid rgba(0,0,0,0.08);
-    display: flex; flex-direction: column; padding: 16px 0;
-  }
-  .logo { padding: 12px 20px 24px; }
-  .logo-name { font-size: 18px; font-weight: 600; color: #1a1a18; letter-spacing: 1px; }
-  .logo-handle { font-size: 12px; color: #888780; margin-top: 2px; }
-  .nav-item {
-    display: flex; align-items: center; gap: 10px;
-    padding: 10px 20px; font-size: 13px; color: #888780;
-    cursor: pointer; border-left: 3px solid transparent;
-    transition: all 0.15s; user-select: none;
-  }
-  .nav-item:hover { background: #f8f7f4; color: #1a1a18; }
-  .nav-item.active { color: #1a1a18; font-weight: 600; border-left-color: #1D9E75; background: #f8f7f4; }
-  .nav-icon { font-size: 16px; width: 20px; text-align: center; }
-  .nav-badge {
-    margin-left: auto; background: #1D9E75; color: #fff;
-    font-size: 10px; font-weight: 700; padding: 2px 7px;
-    border-radius: 10px; min-width: 18px; text-align: center;
-  }
-  .sidebar-bottom { margin-top: auto; padding: 16px 20px; border-top: 1px solid rgba(0,0,0,0.06); }
-  .sidebar-email { font-size: 11px; color: #888; margin-bottom: 10px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  .sidebar-btn {
-    width: 100%; padding: 8px 14px; font-size: 12px;
-    border: 1px solid rgba(0,0,0,0.12); border-radius: 8px;
-    background: transparent; color: #666; cursor: pointer;
-    font-family: inherit; transition: all 0.15s; margin-bottom: 6px;
-  }
-  .sidebar-btn:hover { background: #f5f5f3; color: #1a1a18; }
-  .sidebar-btn.danger { color: #d44; border-color: rgba(221,68,68,0.2); }
-  .sidebar-btn.danger:hover { background: #fef2f2; color: #b91c1c; }
+  <link rel="stylesheet" href="style.css" />
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
 
-  /* ── MAIN CONTENT ── */
-  .main { flex: 1; overflow-y: auto; display: flex; flex-direction: column; }
-  .topbar {
-    padding: 16px 24px; display: flex; align-items: center;
-    justify-content: space-between; border-bottom: 1px solid rgba(0,0,0,0.08);
-    background: #ffffff; position: sticky; top: 0; z-index: 10;
-  }
-  .topbar-title { font-size: 17px; font-weight: 600; color: #1a1a18; }
-  .content { padding: 24px; flex: 1; }
-  .section { display: none; }
-  .section.active { display: block; }
-
-  /* ── STATS GRID ── */
-  .stats-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 14px; margin-bottom: 24px; }
-  .stat-card {
-    background: #ffffff; border: 1px solid rgba(0,0,0,0.06);
-    border-radius: 12px; padding: 18px 20px;
-  }
-  .stat-label { font-size: 12px; color: #888780; margin-bottom: 6px; font-weight: 500; }
-  .stat-value { font-size: 26px; font-weight: 700; color: #1a1a18; }
-  .stat-sub { font-size: 11px; color: #aaa; margin-top: 4px; }
-
-  /* ── CARDS ── */
-  .card {
-    background: #ffffff; border: 1px solid rgba(0,0,0,0.06);
-    border-radius: 14px; padding: 20px; margin-bottom: 18px;
-  }
-  .card-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 16px; }
-  .card-title { font-size: 15px; font-weight: 600; color: #1a1a18; }
-
-  /* ── TABLE ── */
-  table { width: 100%; border-collapse: collapse; font-size: 13px; }
-  th {
-    text-align: left; font-size: 11px; color: #888780;
-    font-weight: 600; padding: 0 12px 10px 0;
-    border-bottom: 1px solid rgba(0,0,0,0.08);
-    text-transform: uppercase; letter-spacing: 0.5px;
-  }
-  td {
-    padding: 12px 12px 12px 0; color: #1a1a18;
-    border-bottom: 1px solid rgba(0,0,0,0.04);
-    vertical-align: middle;
-  }
-  tr:last-child td { border-bottom: none; }
-  tr:hover td { background: #fafaf8; }
-
-  /* ── BADGES ── */
-  .badge {
-    display: inline-block; padding: 4px 10px;
-    border-radius: 20px; font-size: 11px; font-weight: 600;
-  }
-  .badge-pending { background: #FFF8E1; color: #F59E0B; }
-  .badge-confirmed { background: #E8F5E9; color: #16A34A; }
-  .badge-completed { background: #EDE9FE; color: #7C3AED; }
-  .badge-cancelled { background: #FEE2E2; color: #DC2626; text-decoration: line-through; }
-
-  /* ── BUTTONS ── */
-  .btn {
-    padding: 7px 14px; font-size: 13px;
-    border: 1px solid rgba(0,0,0,0.15); border-radius: 8px;
-    background: transparent; color: #1a1a18; cursor: pointer;
-    font-family: inherit; transition: all 0.15s;
-  }
-  .btn:hover { background: #f5f5f3; }
-  .btn-primary { background: #1D9E75; color: white; border-color: #1D9E75; }
-  .btn-primary:hover { background: #17855f; }
-  .btn-sm { padding: 4px 10px; font-size: 11px; border-radius: 6px; }
-  .btn-confirm { background: rgba(22,163,74,0.1); color: #16A34A; border-color: rgba(22,163,74,0.2); }
-  .btn-complete { background: rgba(124,58,237,0.1); color: #7C3AED; border-color: rgba(124,58,237,0.2); }
-  .btn-cancel { background: rgba(220,38,38,0.1); color: #DC2626; border-color: rgba(220,38,38,0.2); }
-  .btn-delete { background: rgba(0,0,0,0.03); color: #999; border-color: rgba(0,0,0,0.08); }
-  .btn-refresh {
-    background: rgba(29,158,117,0.08); color: #1D9E75;
-    border: 1px solid rgba(29,158,117,0.2); border-radius: 8px;
-    padding: 6px 14px; cursor: pointer; font-size: 12px;
-    font-family: inherit; transition: all 0.15s;
-  }
-  .btn-refresh:hover { background: rgba(29,158,117,0.15); }
-
-  /* ── EMAIL TEMPLATE EDITOR ── */
-  .tpl-card {
-    border: 1px solid rgba(0,0,0,0.06); border-radius: 14px;
-    padding: 20px; margin-bottom: 16px; background: #fff;
-  }
-  .tpl-header {
-    display: flex; align-items: center; gap: 10px;
-    margin-bottom: 14px; padding-bottom: 12px;
-    border-bottom: 1px solid rgba(0,0,0,0.04);
-  }
-  .tpl-dot { width: 8px; height: 8px; border-radius: 50%; }
-  .tpl-type { font-size: 14px; font-weight: 600; color: #1a1a18; }
-  .tpl-type-code { font-size: 10px; color: #aaa; margin-left: auto; font-family: monospace; letter-spacing: 0.5px; }
-  .tpl-label { font-size: 11px; color: #888; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px; display: block; font-weight: 600; }
-  .tpl-input {
-    width: 100%; padding: 10px 14px; font-size: 14px;
-    border: 1px solid rgba(0,0,0,0.1); border-radius: 10px;
-    background: #fafaf8; color: #1a1a18; font-family: inherit;
-    outline: none; transition: border-color 0.2s; margin-bottom: 14px;
-  }
-  .tpl-input:focus { border-color: #1D9E75; box-shadow: 0 0 0 2px rgba(29,158,117,0.1); }
-  .tpl-textarea {
-    width: 100%; padding: 12px 14px; font-size: 13px;
-    border: 1px solid rgba(0,0,0,0.1); border-radius: 10px;
-    background: #fafaf8; color: #1a1a18; font-family: inherit;
-    outline: none; resize: vertical; min-height: 120px;
-    line-height: 1.7; transition: border-color 0.2s;
-  }
-  .tpl-textarea:focus { border-color: #1D9E75; box-shadow: 0 0 0 2px rgba(29,158,117,0.1); }
-  .tpl-save {
-    background: #1D9E75; color: #fff; border: none;
-    padding: 8px 18px; border-radius: 8px; cursor: pointer;
-    font-size: 12px; font-weight: 600; font-family: inherit;
-    transition: background 0.15s;
-  }
-  .tpl-save:hover { background: #17855f; }
-  .tpl-saved { background: #16A34A !important; }
-
-  /* ── SEARCH BAR ── */
-  .search-bar {
-    padding: 10px 14px; font-size: 13px; border: 1px solid rgba(0,0,0,0.1);
-    border-radius: 10px; background: #fafaf8; color: #1a1a18;
-    outline: none; width: 260px; font-family: inherit;
-    transition: border-color 0.2s;
-  }
-  .search-bar:focus { border-color: #1D9E75; }
-
-  /* ── TWO COLUMN ── */
-  .two-col { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
-
-  /* ── TOAST ── */
-  .toast {
-    position: fixed; bottom: 24px; right: 24px;
-    background: #1a1a18; color: #fff; padding: 12px 20px;
-    border-radius: 10px; font-size: 13px; z-index: 9999;
-    transform: translateY(100px); opacity: 0;
-    transition: all 0.3s ease;
-  }
-  .toast.show { transform: translateY(0); opacity: 1; }
-
-  /* ── RESPONSIVE ── */
-  @media (max-width: 768px) {
-    .app { flex-direction: column; }
-    .sidebar {
-      width: 100%; min-width: 100%; flex-direction: row;
-      padding: 0; border-right: none; border-bottom: 1px solid rgba(0,0,0,0.08);
-      overflow-x: auto; -webkit-overflow-scrolling: touch;
+  <style>
+    body {
+      background-color: #0B0B0D;
+      color: #FAF7F2;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
     }
-    .logo { display: none; }
-    .sidebar-bottom { display: none; }
-    .nav-item {
-      padding: 12px 16px; border-left: none;
-      border-bottom: 3px solid transparent;
-      white-space: nowrap; font-size: 12px;
+    .dash-standalone-wrap {
+      max-width: 1200px;
+      margin: 40px auto;
+      padding: 0 24px;
+      width: 100%;
+      flex: 1;
     }
-    .nav-item.active { border-left-color: transparent; border-bottom-color: #1D9E75; }
-    .nav-label { display: inline; }
-    .stats-grid { grid-template-columns: 1fr 1fr; }
-    .two-col { grid-template-columns: 1fr; }
-    .content { padding: 16px; }
-    .topbar { padding: 12px 16px; }
-    table { font-size: 12px; }
-    td, th { padding: 8px 6px 8px 0; }
-    .search-bar { width: 100%; }
-    .card { padding: 14px; }
-    input, select, textarea, button { font-size: 16px !important; }
-  }
-</style>
+  </style>
 </head>
+
 <body>
+  <!-- Header Bar -->
+  <header style="background:#131317;border-bottom:1px solid rgba(250,247,242,0.1);padding:16px 24px;">
+    <div class="container" style="display:flex;align-items:center;justify-content:space-between;">
+      <a href="index.html" style="display:flex;align-items:center;gap:12px;">
+        <img src="images/logo.png" alt="CAMLYFF" style="height:38px;border-radius:50%;" />
+        <div>
+          <strong style="color:#FAF7F2;letter-spacing:2px;font-size:18px;">CAMLYFF</strong>
+          <small style="display:block;color:#C8A97E;font-size:10px;letter-spacing:1px;text-transform:uppercase;">Admin Control Portal</small>
+        </div>
+      </a>
+      <a href="index.html" class="btn-secondary" style="font-size:12px;padding:6px 16px;">
+        ← Return to Main Website
+      </a>
+    </div>
+  </header>
 
-<!-- ═══ LOGIN GATE ═══ -->
-<div id="login-gate">
-  <div class="login-card">
-    <div class="login-logo">CAMLYFF</div>
-    <div class="login-sub">Admin Dashboard — Private Access</div>
-    <form id="login-form" onsubmit="return handleLogin(event)">
-      <input type="email" class="login-field" id="login-email" placeholder="admin@camlyff.com" autocomplete="email" required />
-      <input type="password" class="login-field" id="login-password" placeholder="Password" autocomplete="current-password" required />
-      <button type="submit" class="login-btn" id="login-btn">🔐 Sign In</button>
-    </form>
-    <div class="login-error" id="login-error"></div>
-    <span class="login-forgot" onclick="handleForgotPassword()">Forgot password?</span>
-    <div class="login-secure">🔒 Secured by Supabase Authentication</div>
-  </div>
-</div>
-
-<!-- ═══ DASHBOARD APP ═══ -->
-<div class="app" id="app" style="display:none">
-  <!-- Sidebar -->
-  <div class="sidebar">
-    <div class="logo">
-      <div class="logo-name">camlyff</div>
-      <div class="logo-handle">@camlyff</div>
-    </div>
-    <div class="nav-item active" onclick="switchSection('overview', this)">
-      <span class="nav-icon">📊</span><span class="nav-label">Overview</span>
-    </div>
-    <div class="nav-item" onclick="switchSection('bookings', this)">
-      <span class="nav-icon">📷</span><span class="nav-label">Bookings</span>
-      <span class="nav-badge" id="badge-bookings" style="display:none"></span>
-    </div>
-    <div class="nav-item" onclick="switchSection('emails', this)">
-      <span class="nav-icon">✉️</span><span class="nav-label">Email Templates</span>
-    </div>
-    <div class="nav-item" onclick="switchSection('settings', this)">
-      <span class="nav-icon">⚙️</span><span class="nav-label">Settings</span>
-    </div>
-    <div class="sidebar-bottom">
-      <div class="sidebar-email" id="user-email"></div>
-      <button class="sidebar-btn" onclick="window.location.href='index.html'">← Back to Site</button>
-      <button class="sidebar-btn danger" onclick="handleLogout()">🔒 Sign Out</button>
-    </div>
-  </div>
-
-  <!-- Main -->
-  <div class="main">
-    <div class="topbar">
-      <span class="topbar-title" id="page-title">Overview</span>
-      <div style="display:flex;gap:8px;align-items:center">
-        <span id="topbar-email" style="font-size:12px;color:#888"></span>
+  <main class="dash-standalone-wrap">
+    <!-- 1. LOGIN GATE -->
+    <div id="dashGateWrap" class="admin-login-box">
+      <h3>Admin Authentication</h3>
+      <p>Log in with your admin credentials to manage live bookings and SQL email templates.</p>
+      
+      <form onsubmit="return handleAdminLogin(event)">
+        <input type="email" id="adminLoginEmail" class="form-input" placeholder="admin@camlyff.com" required style="margin-bottom:12px;" />
+        <input type="password" id="adminLoginPass" class="form-input" placeholder="Password" required style="margin-bottom:16px;" />
+        <button type="submit" id="btnAdminLogin" class="btn-primary" style="width:100%;">Sign In to Dashboard</button>
+      </form>
+      <div id="adminLoginError" style="color:#EF4444;font-size:12px;margin-top:12px;"></div>
+      <div style="font-size:11px;color:#A8A196;margin-top:16px;">
+        Powered by Supabase SQL Engine
       </div>
     </div>
-    <div class="content">
 
-      <!-- OVERVIEW -->
-      <div class="section active" id="section-overview">
-        <div class="stats-grid">
-          <div class="stat-card">
-            <div class="stat-label">Total Bookings</div>
-            <div class="stat-value" id="stat-total">0</div>
-            <div class="stat-sub">all time</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">This Month</div>
-            <div class="stat-value" id="stat-month">0</div>
-            <div class="stat-sub" id="stat-month-label">bookings</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Pending</div>
-            <div class="stat-value" id="stat-pending">0</div>
-            <div class="stat-sub">awaiting confirmation</div>
-          </div>
-          <div class="stat-card">
-            <div class="stat-label">Revenue</div>
-            <div class="stat-value" id="stat-revenue">₹0</div>
-            <div class="stat-sub">confirmed + completed</div>
-          </div>
+    <!-- 2. LOGGED IN DASHBOARD -->
+    <div id="dashMainWrap" style="display:none;flex-direction:column;gap:24px;">
+      <!-- Top Action Bar -->
+      <div style="display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:16px;background:#131317;padding:18px 24px;border-radius:14px;border:1px solid rgba(250,247,242,0.08);">
+        <div>
+          <span style="font-size:12px;color:#A8A196;">Logged in Administrator:</span>
+          <strong id="dashUserEmailBadge" style="color:#C8A97E;margin-left:6px;font-size:14px;">admin</strong>
         </div>
-        <div class="two-col">
-          <div class="card">
-            <div class="card-header"><span class="card-title">Recent Bookings</span></div>
-            <table>
-              <thead><tr><th>Client</th><th>Service</th><th>Date</th><th>Status</th></tr></thead>
-              <tbody id="overview-recent"></tbody>
-            </table>
-          </div>
-          <div class="card">
-            <div class="card-header"><span class="card-title">Quick Stats</span></div>
-            <div style="padding:12px 0">
-              <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.04)">
-                <span style="color:#888;font-size:13px">Confirmed</span>
-                <span style="font-weight:600;font-size:13px" id="stat-confirmed">0</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.04)">
-                <span style="color:#888;font-size:13px">Completed</span>
-                <span style="font-weight:600;font-size:13px" id="stat-completed">0</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;padding:8px 0;border-bottom:1px solid rgba(0,0,0,0.04)">
-                <span style="color:#888;font-size:13px">Cancelled</span>
-                <span style="font-weight:600;font-size:13px" id="stat-cancelled">0</span>
-              </div>
-              <div style="display:flex;justify-content:space-between;padding:8px 0">
-                <span style="color:#888;font-size:13px">Avg. Revenue</span>
-                <span style="font-weight:600;font-size:13px" id="stat-avg-revenue">₹0</span>
-              </div>
-            </div>
-          </div>
+        <div style="display:flex;gap:10px;">
+          <button onclick="loadAdminBookings()" class="btn-secondary" style="font-size:11px;padding:7px 16px;">↻ Refresh Records</button>
+          <button onclick="handleAdminLogout()" class="btn-secondary" style="font-size:11px;padding:7px 16px;color:#EF4444;border-color:rgba(239,68,68,0.3);">Sign Out</button>
         </div>
       </div>
 
-      <!-- BOOKINGS -->
-      <div class="section" id="section-bookings">
-        <div class="card" style="overflow-x:auto">
-          <div class="card-header">
-            <span class="card-title">📋 All Bookings</span>
-            <div style="display:flex;gap:10px;align-items:center">
-              <input type="text" class="search-bar" id="booking-search" placeholder="Search bookings..." oninput="filterBookings()" />
-              <button class="btn-refresh" onclick="loadBookings()">↻ Refresh</button>
-            </div>
-          </div>
-          <div id="bookings-loading" style="padding:24px;text-align:center;color:#888;display:none">
-            <div style="display:inline-block;width:20px;height:20px;border:2px solid #ddd;border-top-color:#1D9E75;border-radius:50%;animation:spin 0.8s linear infinite"></div>
-            <span style="margin-left:10px">Loading bookings...</span>
-          </div>
-          <table id="bookings-table">
+      <!-- Metrics -->
+      <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;">
+        <div style="background:#131317;padding:20px;border-radius:14px;border:1px solid rgba(250,247,242,0.08);">
+          <div style="font-size:11px;color:#A8A196;text-transform:uppercase;letter-spacing:1px;">Total Bookings</div>
+          <div id="metricTotalBookings" style="font-size:28px;font-weight:700;color:#FAF7F2;margin-top:6px;">0</div>
+        </div>
+        <div style="background:#131317;padding:20px;border-radius:14px;border:1px solid rgba(250,247,242,0.08);">
+          <div style="font-size:11px;color:#A8A196;text-transform:uppercase;letter-spacing:1px;">Pending Reservations</div>
+          <div id="metricPending" style="font-size:28px;font-weight:700;color:#F59E0B;margin-top:6px;">0</div>
+        </div>
+        <div style="background:#131317;padding:20px;border-radius:14px;border:1px solid rgba(250,247,242,0.08);">
+          <div style="font-size:11px;color:#A8A196;text-transform:uppercase;letter-spacing:1px;">Confirmed Revenue</div>
+          <div id="metricRevenue" style="font-size:28px;font-weight:700;color:#22C55E;margin-top:6px;">₹0</div>
+        </div>
+      </div>
+
+      <!-- Bookings Table Section -->
+      <div style="background:#131317;padding:24px;border-radius:16px;border:1px solid rgba(250,247,242,0.08);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:20px;flex-wrap:wrap;gap:12px;">
+          <h3 style="font-family:'Syne',sans-serif;font-size:18px;color:#FAF7F2;">Customer Bookings</h3>
+          <input type="text" id="dashSearchInput" class="form-input" placeholder="Search by name, phone, gear..." oninput="filterAdminBookings()" style="max-width:300px;padding:8px 14px;font-size:12px;" />
+        </div>
+
+        <div class="table-responsive">
+          <table class="data-table">
             <thead>
               <tr>
-                <th>Client</th>
+                <th>Customer</th>
                 <th>Phone</th>
-                <th>Email</th>
-                <th>Camera / Service</th>
-                <th>Date</th>
-                <th>Duration</th>
+                <th>Equipment</th>
+                <th>Date / Duration</th>
                 <th>Price</th>
                 <th>Status</th>
-                <th>Booked At</th>
                 <th>Actions</th>
               </tr>
             </thead>
-            <tbody id="bookings-body">
-              <tr><td colspan="10" style="text-align:center;color:#aaa;padding:32px">Loading...</td></tr>
+            <tbody id="dashBookingsTableBody">
+              <tr>
+                <td colspan="7" style="text-align:center;padding:24px;color:#A8A196;">Loading database entries...</td>
+              </tr>
             </tbody>
           </table>
-          <div style="padding:14px 0;font-size:12px;color:#888;border-top:1px solid rgba(0,0,0,0.04);margin-top:8px">
-            Total: <strong id="bookings-count">0</strong> bookings · Revenue: <strong id="bookings-revenue">₹0</strong>
-          </div>
         </div>
       </div>
 
-      <!-- EMAIL TEMPLATES -->
-      <div class="section" id="section-emails">
-        <div class="card">
-          <div class="card-header">
-            <span class="card-title">✉️ Email Templates</span>
-            <button class="btn-refresh" onclick="loadEmailTemplates()">↻ Refresh</button>
-          </div>
-          <p style="font-size:13px;color:#888;margin-bottom:20px">Edit email subjects and body templates. Changes are saved to the database and used for all future emails.</p>
-          <div id="templates-container">
-            <div style="text-align:center;color:#aaa;padding:32px">Loading...</div>
-          </div>
+      <!-- Email Templates Section -->
+      <div style="background:#131317;padding:24px;border-radius:16px;border:1px solid rgba(250,247,242,0.08);">
+        <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+          <h3 style="font-family:'Syne',sans-serif;font-size:18px;color:#FAF7F2;">Email Templates &amp; Auto-Responses</h3>
+          <button onclick="loadAdminTemplates()" class="btn-secondary" style="font-size:11px;padding:6px 14px;">Reload Templates</button>
         </div>
-      </div>
-
-      <!-- SETTINGS -->
-      <div class="section" id="section-settings">
-        <div class="card">
-          <div class="card-header"><span class="card-title">⚙️ Admin Settings</span></div>
-          <div style="padding:8px 0">
-            <div style="margin-bottom:20px">
-              <label style="font-size:12px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Logged in as</label>
-              <div style="font-size:15px;font-weight:600;color:#1a1a18" id="settings-email">—</div>
-            </div>
-            <div style="margin-bottom:20px">
-              <label style="font-size:12px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Session</label>
-              <div style="font-size:13px;color:#1a1a18" id="settings-session">Active</div>
-            </div>
-            <div style="margin-bottom:20px">
-              <label style="font-size:12px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:10px">Actions</label>
-              <button class="btn" onclick="handlePasswordReset()" style="margin-right:8px">📧 Send Password Reset Email</button>
-              <button class="btn" onclick="handleLogout()" style="color:#d44">🔒 Sign Out</button>
-            </div>
-            <div style="margin-top:24px;padding-top:16px;border-top:1px solid rgba(0,0,0,0.04)">
-              <label style="font-size:12px;color:#888;font-weight:600;text-transform:uppercase;letter-spacing:0.5px;display:block;margin-bottom:6px">Database</label>
-              <div style="font-size:13px;color:#888">Supabase PostgreSQL · <span style="color:#1D9E75">Connected</span></div>
-            </div>
-          </div>
+        <p style="font-size:13px;color:#A8A196;margin-bottom:18px;">
+          Customize automated client receipts and admin alert emails.
+        </p>
+        <div id="dashTemplatesContainer">
+          <!-- Populated by script.js -->
         </div>
       </div>
 
     </div>
-  </div>
-</div>
+  </main>
 
-<!-- Toast -->
-<div class="toast" id="toast"></div>
-
-<style>@keyframes spin { to { transform: rotate(360deg); } }</style>
-
-<script>
-/* ══════════════════════════════════════════════════════════════
-   CAMLYFF ADMIN DASHBOARD
-   Authentication: Supabase Auth (email + password)
-   Database: Supabase PostgreSQL
-══════════════════════════════════════════════════════════════ */
-
-// ── Supabase Init ──
-var _supa = supabase.createClient(
-  'https://xsjkffudpkfuzqubyqtk.supabase.co',
-  'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InhzamtmZnVkcGtmdXpxdWJ5cXRrIiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODEzNjY1NzAsImV4cCI6MjA5Njk0MjU3MH0.w4wk98jsrL7jXRTq06CKH3CovHhuHMVHkL8XDbKsM-0'
-);
-
-var _bookings = [];
-var _templates = [];
-var _user = null;
-var _activeSection = 'overview';
-
-// ── Auth: Check Session on Load ──
-(async function() {
-  var res = await _supa.auth.getSession();
-  if (res.data.session) {
-    _user = res.data.session.user;
-    showDashboard();
-  } else {
-    document.getElementById('login-gate').classList.remove('hidden');
-    document.getElementById('login-email').focus();
-  }
-})();
-
-// ── Auth: Login ──
-async function handleLogin(e) {
-  e.preventDefault();
-  var email = document.getElementById('login-email').value.trim();
-  var pass = document.getElementById('login-password').value;
-  var btn = document.getElementById('login-btn');
-  var err = document.getElementById('login-error');
-  err.textContent = '';
-  btn.disabled = true;
-  btn.textContent = '⏳ Signing in...';
-
-  var res = await _supa.auth.signInWithPassword({ email: email, password: pass });
-  if (res.error) {
-    var msg = res.error.message || 'Login failed';
-    if (msg.includes('Invalid login')) msg = 'Invalid email or password';
-    err.textContent = msg;
-    btn.disabled = false;
-    btn.textContent = '🔐 Sign In';
-    return false;
-  }
-
-  _user = res.data.user;
-  showDashboard();
-  btn.disabled = false;
-  btn.textContent = '🔐 Sign In';
-  return false;
-}
-
-// ── Auth: Logout ──
-async function handleLogout() {
-  await _supa.auth.signOut();
-  _user = null;
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('login-gate').classList.remove('hidden');
-  document.getElementById('login-email').value = '';
-  document.getElementById('login-password').value = '';
-  document.getElementById('login-error').textContent = '';
-  document.getElementById('login-email').focus();
-}
-
-// ── Auth: Forgot Password ──
-async function handleForgotPassword() {
-  var email = document.getElementById('login-email').value.trim();
-  if (!email) {
-    document.getElementById('login-error').textContent = 'Enter your email first, then click Forgot password.';
-    return;
-  }
-  var res = await _supa.auth.resetPasswordForEmail(email, {
-    redirectTo: window.location.origin + window.location.pathname
-  });
-  if (res.error) {
-    document.getElementById('login-error').textContent = res.error.message;
-  } else {
-    document.getElementById('login-error').textContent = '';
-    showToast('Password reset email sent to ' + email);
-  }
-}
-
-// ── Auth: Password Reset (from settings) ──
-async function handlePasswordReset() {
-  if (!_user) return;
-  var res = await _supa.auth.resetPasswordForEmail(_user.email, {
-    redirectTo: window.location.origin + window.location.pathname
-  });
-  if (res.error) {
-    showToast('Error: ' + res.error.message);
-  } else {
-    showToast('Password reset email sent to ' + _user.email);
-  }
-}
-
-// ── Show Dashboard ──
-function showDashboard() {
-  document.getElementById('login-gate').classList.add('hidden');
-  document.getElementById('app').style.display = 'flex';
-  var email = _user ? _user.email : '';
-  document.getElementById('user-email').textContent = email;
-  document.getElementById('topbar-email').textContent = email;
-  document.getElementById('settings-email').textContent = email;
-  document.getElementById('settings-session').textContent = 'Active · Logged in at ' + new Date().toLocaleTimeString();
-  loadBookings();
-  loadEmailTemplates();
-}
-
-// ── Section Navigation ──
-function switchSection(name, el) {
-  document.querySelectorAll('.section').forEach(function(s) { s.classList.remove('active'); });
-  document.querySelectorAll('.nav-item').forEach(function(n) { n.classList.remove('active'); });
-  document.getElementById('section-' + name).classList.add('active');
-  el.classList.add('active');
-  var label = el.querySelector('.nav-label');
-  document.getElementById('page-title').textContent = label ? label.textContent : name;
-  _activeSection = name;
-}
-
-// ══════════════════════════════════════════════════════════════
-//  BOOKINGS CRUD
-// ══════════════════════════════════════════════════════════════
-
-async function loadBookings() {
-  var loading = document.getElementById('bookings-loading');
-  var tbody = document.getElementById('bookings-body');
-  if (loading) loading.style.display = '';
-
-  var res = await _supa.from('bookings').select('*').order('created_at', { ascending: false });
-
-  if (res.error) {
-    console.error('[SQL] Load failed:', res.error);
-    if (tbody) tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#d44;padding:32px">❌ ' + res.error.message + '</td></tr>';
-    if (loading) loading.style.display = 'none';
-    return;
-  }
-
-  _bookings = res.data || [];
-  renderBookings(_bookings);
-  updateStats();
-  if (loading) loading.style.display = 'none';
-  console.log('[SQL] Loaded ' + _bookings.length + ' bookings');
-}
-
-function renderBookings(bookings) {
-  var tbody = document.getElementById('bookings-body');
-  if (!tbody) return;
-
-  if (!bookings.length) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#aaa;padding:32px">No bookings yet. When clients book through the website, they\'ll appear here.</td></tr>';
-    document.getElementById('bookings-count').textContent = '0';
-    document.getElementById('bookings-revenue').textContent = '₹0';
-    return;
-  }
-
-  var total = 0;
-  tbody.innerHTML = bookings.map(function(b) {
-    total += (b.price || 0);
-    var badgeClass = 'badge-' + (b.status || 'pending');
-    var bookedDate = b.created_at ? new Date(b.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : '-';
-    var service = b.camera || b.service || '-';
-
-    var actions = '';
-    if (b.status !== 'confirmed' && b.status !== 'completed') {
-      actions += '<button class="btn btn-sm btn-confirm" onclick="updateBooking(' + b.id + ',\'confirmed\')" title="Confirm">✓</button> ';
-    }
-    if (b.status === 'confirmed') {
-      actions += '<button class="btn btn-sm btn-complete" onclick="updateBooking(' + b.id + ',\'completed\')" title="Complete">🏁</button> ';
-    }
-    if (b.status !== 'cancelled' && b.status !== 'completed') {
-      actions += '<button class="btn btn-sm btn-cancel" onclick="updateBooking(' + b.id + ',\'cancelled\')" title="Cancel">✕</button> ';
-    }
-    actions += '<button class="btn btn-sm btn-delete" onclick="deleteBooking(' + b.id + ')" title="Delete">🗑</button>';
-
-    return '<tr>' +
-      '<td style="font-weight:600">' + (b.name || 'Guest') + '</td>' +
-      '<td>' + (b.phone || '-') + '</td>' +
-      '<td style="font-size:12px">' + (b.email || '-') + '</td>' +
-      '<td>' + service + '</td>' +
-      '<td>' + (b.date || '-') + '</td>' +
-      '<td>' + (b.duration || '-') + '</td>' +
-      '<td style="font-weight:600">₹' + (b.price || 0).toLocaleString() + '</td>' +
-      '<td><span class="badge ' + badgeClass + '">' + (b.status || 'pending') + '</span></td>' +
-      '<td style="font-size:11px;color:#888">' + bookedDate + '</td>' +
-      '<td style="white-space:nowrap">' + actions + '</td>' +
-    '</tr>';
-  }).join('');
-
-  document.getElementById('bookings-count').textContent = bookings.length;
-  document.getElementById('bookings-revenue').textContent = '₹' + total.toLocaleString();
-}
-
-function filterBookings() {
-  var q = document.getElementById('booking-search').value.toLowerCase();
-  if (!q) { renderBookings(_bookings); return; }
-  var filtered = _bookings.filter(function(b) {
-    return (b.name || '').toLowerCase().includes(q) ||
-           (b.phone || '').toLowerCase().includes(q) ||
-           (b.email || '').toLowerCase().includes(q) ||
-           (b.camera || '').toLowerCase().includes(q) ||
-           (b.service || '').toLowerCase().includes(q) ||
-           (b.status || '').toLowerCase().includes(q);
-  });
-  renderBookings(filtered);
-}
-
-async function updateBooking(id, newStatus) {
-  var res = await _supa.from('bookings').update({ status: newStatus }).eq('id', id);
-  if (res.error) {
-    showToast('Update failed: ' + res.error.message);
-    return;
-  }
-  showToast('Booking #' + id + ' → ' + newStatus);
-  loadBookings();
-}
-
-async function deleteBooking(id) {
-  if (!confirm('Delete this booking permanently?')) return;
-  var res = await _supa.from('bookings').delete().eq('id', id);
-  if (res.error) {
-    showToast('Delete failed: ' + res.error.message);
-    return;
-  }
-  showToast('Booking deleted');
-  loadBookings();
-}
-
-// ── Stats ──
-function updateStats() {
-  var total = _bookings.length;
-  var now = new Date();
-  var monthStart = new Date(now.getFullYear(), now.getMonth(), 1);
-  var thisMonth = _bookings.filter(function(b) { return new Date(b.created_at) >= monthStart; }).length;
-  var pending = _bookings.filter(function(b) { return b.status === 'pending'; }).length;
-  var confirmed = _bookings.filter(function(b) { return b.status === 'confirmed'; }).length;
-  var completed = _bookings.filter(function(b) { return b.status === 'completed'; }).length;
-  var cancelled = _bookings.filter(function(b) { return b.status === 'cancelled'; }).length;
-  var revenue = _bookings.filter(function(b) { return b.status === 'confirmed' || b.status === 'completed'; })
-    .reduce(function(sum, b) { return sum + (b.price || 0); }, 0);
-  var avgRevenue = (confirmed + completed) > 0 ? Math.round(revenue / (confirmed + completed)) : 0;
-
-  document.getElementById('stat-total').textContent = total;
-  document.getElementById('stat-month').textContent = thisMonth;
-  document.getElementById('stat-pending').textContent = pending;
-  document.getElementById('stat-revenue').textContent = '₹' + revenue.toLocaleString();
-  document.getElementById('stat-confirmed').textContent = confirmed;
-  document.getElementById('stat-completed').textContent = completed;
-  document.getElementById('stat-cancelled').textContent = cancelled;
-  document.getElementById('stat-avg-revenue').textContent = '₹' + avgRevenue.toLocaleString();
-
-  // Badge
-  var badge = document.getElementById('badge-bookings');
-  if (badge) {
-    if (pending > 0) { badge.textContent = pending; badge.style.display = ''; }
-    else { badge.style.display = 'none'; }
-  }
-
-  // Overview recent bookings
-  var recent = document.getElementById('overview-recent');
-  if (recent) {
-    var top5 = _bookings.slice(0, 5);
-    recent.innerHTML = top5.map(function(b) {
-      var badgeClass = 'badge-' + (b.status || 'pending');
-      return '<tr><td style="font-weight:500">' + (b.name || 'Guest') + '</td><td>' + (b.camera || b.service || '-') + '</td><td>' + (b.date || '-') + '</td><td><span class="badge ' + badgeClass + '">' + (b.status || 'pending') + '</span></td></tr>';
-    }).join('');
-    if (!top5.length) recent.innerHTML = '<tr><td colspan="4" style="text-align:center;color:#aaa;padding:16px">No bookings yet</td></tr>';
-  }
-}
-
-// ══════════════════════════════════════════════════════════════
-//  EMAIL TEMPLATES CRUD
-// ══════════════════════════════════════════════════════════════
-
-var _defaultTemplates = [
-  { type: 'booking_confirmation', subject: '✅ Booking Confirmed — CAMLYFF', body: 'Hi {{name}},\n\nYour booking is confirmed!\n\n📷 Camera: {{camera}}\n📅 Date: {{date}}\n⏱ Duration: {{duration}}\n💰 Price: {{price}}\n\nWe\'ll reach out to finalize details. Thank you for choosing CAMLYFF!\n\nBest,\nTeam CAMLYFF' },
-  { type: 'admin_notification', subject: '🔔 New Booking — {{name}}', body: 'New booking received!\n\n👤 Client: {{name}}\n📱 Phone: {{phone}}\n📷 Camera: {{camera}}\n📅 Date: {{date}}\n⏱ Duration: {{duration}}\n💰 Price: {{price}}\n📧 Email: {{email}}\n\nCheck dashboard for details.' },
-  { type: 'password_reset', subject: '🔐 Password Reset — CAMLYFF Admin', body: 'Hi Admin,\n\nYou requested a password reset.\nClick the link below to reset:\n{{reset_link}}\n\nIf you didn\'t request this, ignore this email.\n\n— CAMLYFF' }
-];
-
-async function loadEmailTemplates() {
-  var container = document.getElementById('templates-container');
-  if (!container) return;
-  container.innerHTML = '<div style="text-align:center;color:#aaa;padding:32px"><div style="display:inline-block;width:20px;height:20px;border:2px solid #ddd;border-top-color:#1D9E75;border-radius:50%;animation:spin 0.8s linear infinite"></div> Loading...</div>';
-
-  var res = await _supa.from('email_templates').select('*').order('id', { ascending: true });
-
-  if (res.error) {
-    container.innerHTML = '<div style="text-align:center;padding:32px"><p style="color:#F59E0B;margin-bottom:14px">⚠️ email_templates table not found or access denied.</p><p style="color:#888;font-size:12px;margin-bottom:16px">Run the SQL schema in Supabase SQL Editor first.</p><button class="btn-primary" onclick="initDefaultTemplates()" style="padding:10px 20px;border:none;border-radius:10px;cursor:pointer;font-weight:600;font-family:inherit">🚀 Try Loading Defaults</button></div>';
-    return;
-  }
-
-  if (!res.data || !res.data.length) {
-    container.innerHTML = '<div style="text-align:center;padding:32px"><p style="color:#888;margin-bottom:14px">No templates found.</p><button class="btn btn-primary" onclick="initDefaultTemplates()">🚀 Load Default Templates</button></div>';
-    return;
-  }
-
-  _templates = res.data;
-  renderTemplates(_templates);
-}
-
-function renderTemplates(templates) {
-  var container = document.getElementById('templates-container');
-  if (!container) return;
-
-  var typeLabels = {
-    booking_confirmation: '📩 Booking Confirmation (to Customer)',
-    admin_notification: '🔔 Admin Notification (to You)',
-    password_reset: '🔐 Password Reset'
-  };
-  var dotColors = {
-    booking_confirmation: '#16A34A',
-    admin_notification: '#F59E0B',
-    password_reset: '#7C3AED'
-  };
-
-  container.innerHTML = templates.map(function(t) {
-    var label = typeLabels[t.type] || t.type;
-    var color = dotColors[t.type] || '#1D9E75';
-    return '<div class="tpl-card">' +
-      '<div class="tpl-header">' +
-        '<div class="tpl-dot" style="background:' + color + '"></div>' +
-        '<span class="tpl-type">' + label + '</span>' +
-        '<span class="tpl-type-code">' + t.type + '</span>' +
-      '</div>' +
-      '<label class="tpl-label">Subject</label>' +
-      '<input class="tpl-input" id="tpl-subj-' + t.id + '" value="' + (t.subject || '').replace(/"/g, '&quot;') + '" />' +
-      '<label class="tpl-label">Body</label>' +
-      '<textarea class="tpl-textarea" id="tpl-body-' + t.id + '" rows="7">' + (t.body || '') + '</textarea>' +
-      '<div style="display:flex;gap:8px;margin-top:12px;justify-content:flex-end">' +
-        '<button class="tpl-save" id="tpl-btn-' + t.id + '" onclick="saveTemplate(' + t.id + ')">💾 Save Changes</button>' +
-      '</div>' +
-    '</div>';
-  }).join('');
-}
-
-async function saveTemplate(id) {
-  var subj = document.getElementById('tpl-subj-' + id);
-  var body = document.getElementById('tpl-body-' + id);
-  var btn = document.getElementById('tpl-btn-' + id);
-  if (!subj || !body) return;
-
-  btn.textContent = '⏳ Saving...';
-  btn.disabled = true;
-
-  var res = await _supa.from('email_templates').update({
-    subject: subj.value,
-    body: body.value,
-    updated_at: new Date().toISOString()
-  }).eq('id', id);
-
-  if (res.error) {
-    showToast('Save failed: ' + res.error.message);
-    btn.textContent = '💾 Save Changes';
-    btn.disabled = false;
-    return;
-  }
-
-  btn.textContent = '✅ Saved!';
-  btn.classList.add('tpl-saved');
-  subj.style.borderColor = '#16A34A';
-  body.style.borderColor = '#16A34A';
-  showToast('Template saved successfully');
-
-  setTimeout(function() {
-    btn.textContent = '💾 Save Changes';
-    btn.classList.remove('tpl-saved');
-    btn.disabled = false;
-    subj.style.borderColor = '';
-    body.style.borderColor = '';
-  }, 2000);
-}
-
-async function initDefaultTemplates() {
-  var res = await _supa.from('email_templates').insert(_defaultTemplates);
-  if (res.error) {
-    showToast('Failed: ' + res.error.message);
-    return;
-  }
-  showToast('Default templates loaded!');
-  loadEmailTemplates();
-}
-
-// ── Toast ──
-function showToast(msg) {
-  var toast = document.getElementById('toast');
-  toast.textContent = msg;
-  toast.classList.add('show');
-  setTimeout(function() { toast.classList.remove('show'); }, 3000);
-}
-</script>
+  <script src="script.js"></script>
+  <script>
+    // Auto-open on standalone page
+    document.addEventListener('DOMContentLoaded', () => {
+      if (typeof loadAdminBookings === 'function') {
+        loadAdminBookings();
+      }
+      if (typeof loadAdminTemplates === 'function') {
+        loadAdminTemplates();
+      }
+    });
+  </script>
 </body>
 </html>
